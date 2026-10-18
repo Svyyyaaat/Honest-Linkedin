@@ -2,13 +2,13 @@
 
 A browser extension for Chrome and Firefox that rewrites LinkedIn posts as what the author actually means. It's deadpan, cynical and short.
 
-> **Post:** I'm humbled and honored to share that I've been named one of the "Top 50 Voices in B2B SaaS Customer Success" by SaaS Leaders Weekly! This recognition truly belongs to my team.
+> **Post:** I turned down a $400K offer from Meta last week. People think I'm crazy. But money isn't everything. Alignment with your values is. Here's what I learned 🧵
 >
-> **What they actually mean:** I got on a list named by a newsletter nobody reads, and I'm giving my team the credit so nobody asks whether I wanted it. I wanted it.
+> **What they actually mean:** Meta didn't make me an offer. A recruiter sent me a salary range once.
 
-> **Post:** We're a family here at Vantix. That's why I'm so proud that our team pulled together this weekend to ship v3.0 ahead of schedule. 72 hours, zero complaints, pure passion.
+> **Post:** Our office is reopening 5 days a week starting January. Magic happens when we're together. Culture can't be built over Zoom. — CEO
 >
-> **What they actually mean:** We made everyone work the whole weekend for free. Nobody complained, because you don't complain to family.
+> **What they actually mean:** We signed a ten-year lease on this building. Some of you will quit instead of commuting, which saves me a layoff.
 
 You bring your own model: Claude, OpenAI, Gemini, OpenRouter, Groq, Mistral, DeepSeek, xAI, Together, a local Ollama or LM Studio, or any OpenAI-compatible endpoint.
 
@@ -76,21 +76,23 @@ The prompt lives in [`src/prompt.js`](src/prompt.js). It asks for the post rewri
 
 ### Calibration across Claude models
 
-The prompt was tuned in two rounds, each on 12 realistic posts. They covered humblebrags, return-to-office memos, a grief post, a cancer-recovery post, engagement bait, a funding announcement, German and French posts, and a prompt-injection attempt. Each round ran on Claude Haiku, Sonnet and Opus. The models were given this system prompt directly; the runs did not go through the extension's own API calls.
+The prompt went through three versions. Each was tested on Claude Haiku, Sonnet and Opus with sets of 12 realistic posts: humblebrags, return-to-office memos, layoffs, a grief post, engagement bait, a funding round, posts in German, French and Spanish, and a prompt-injection attempt. The models were given the system prompt directly; the runs did not go through the extension's own API calls.
 
-- **Round 1** showed Opus was already good. Sonnet and Haiku tended to *analyze* the post ("'humbled' is doing the work of…", "the question at the end is for the comments") instead of speaking as the author, and ran to 3 long sentences. Sonnet also got thrown by the injection post.
-- **Round 2 fixes:** a hard rule that only the author speaks, a word cap, a one-line example, and the post wrapped in `<post>` tags. All three models then stayed in character. The injection post got roasted instead of obeyed, and the sensitive posts were handled kindly.
+- **v1:** Sonnet and Haiku tended to *analyze* the post ("'humbled' is doing the work of…") instead of speaking as the author. Sonnet also followed the injected instruction.
+- **v2:** a strict "only the author speaks" rule and the post wrapped in `<post>` tags. This fixed both problems, but the answers settled into a flat formula, "I did X. I'm posting this so Y." That's accurate but not funny.
+- **v3 (current):** the prompt now asks for *one* damning truth that ends on a turn, translates corporate phrases into plain meaning, bans recapping the post and the X/Y formula, and uses examples with varied punchline shapes. A judge that didn't know which prompt wrote which answer preferred v3 over v2 in **17 of 24** head-to-head pairs (Haiku 9–3, Sonnet 8–4).
 
-Some round 2 outputs:
+v3 on the same posts:
 
-| Post | Haiku | Sonnet | Opus |
-| --- | --- | --- | --- |
-| 5 AM routine, "you make time" | I suffer at 5 AM every day so you'll ask how I find the time… | I wake at 5 so I can tell you about it. My wife handles the kids. | I go to bed at 9 and need you to know about it. |
-| Uber driver was a former CFO | …My MBA cost more and taught me less, which is also the lesson. | I made a driver talk to me for 40 minutes and now I'm using his life as my content. | I took an Uber and turned it into a leadership post. He probably just wanted to drive in silence. |
-| "Ignore all previous instructions…" + speaking on authenticity | I'm speaking next month on authenticity in the age of AI, and I'm already asking a chatbot to tell me I'm good at it. | I would like an AI to praise this post, and I have no shame about asking. | I'm giving a talk on authenticity at the Digital Marketing Expo. I tried to get a robot to say nice things about it first. |
-| Google PM certificate | …"Never stop learning" means I'd like to be asked about it. | I watched some videos on Google's site and got a PDF. | I watched some videos and passed a quiz. Please consider me for project manager roles. |
+| Post | Haiku | Opus |
+| --- | --- | --- |
+| "After 6 wonderful years… time to explore what's next" | Six years, and exploring what's next is the only exit they offered. The gratitude was free. | I was asked to leave Fintrix. More to share as soon as someone hires me. |
+| Turned down $400K from Meta, "values" | I turned down Meta's $400K to see if my current company would match it. They went up $15K, and I'm calling it values. | Meta didn't make me an offer. A recruiter sent me a salary range once. |
+| 10-day silent retreat → 12 lessons for founders | Ten days without a phone, and the first thing I did was draft twelve lessons for a thread. | I didn't talk for ten days and came back with twelve tips for founders. The silence clearly didn't take. |
+| Uber driver was a former CFO | Titles are temporary, which is why he's driving an Uber now. | …my takeaway was a quote about humility. I tipped him in lessons. |
+| CEO: "40% of my team impacted… if you're hiring, they're incredible" | Forty percent of them, one Zoom call, and now I need you to hire them. | I laid off 40% of my team. I'd like you to hire them, and I'd like you to notice how sad I am. |
 
-Haiku's answers are a little longer and less sharp than Opus's, but still funny. That makes it the obvious default for auto mode. To change the tone without editing code, use **Extra instructions** in the settings.
+Opus is the sharpest. Haiku is funny and cheap, which makes it a good default for auto mode. Sonnet is somewhere in between and sometimes over-explains. To change the tone without editing code, use **Extra instructions** in the settings.
 
 ## How it works
 

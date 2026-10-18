@@ -26,7 +26,7 @@ function createMock() {
         return send(200, { data: [{ id: "mock-small" }, { id: "mock-large" }] });
       }
       if (req.url === "/v1/chat/completions") {
-        return send(200, { choices: [{ message: { content: `"Honest: I need attention. (${snippet})"` } }] });
+        return send(200, { choices: [{ message: { content: `"Honest: [MOCK REPLY] ${snippet}"` } }] });
       }
       if (req.url === "/v1/messages") {
         // Behave like an older model that rejects the effort parameter.
@@ -37,7 +37,7 @@ function createMock() {
           stop_reason: "end_turn",
           content: [
             { type: "thinking", thinking: "" },
-            { type: "text", text: `I need attention, Anthropic edition. (${snippet})` },
+            { type: "text", text: `[MOCK REPLY, Anthropic] ${snippet}` },
           ],
         });
       }

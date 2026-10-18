@@ -86,7 +86,7 @@ async function waitFor(fn, what, timeout = 8000) {
     assert.equal(await post1.locator(".hl-translating").count(), 0, "shimmer removed after reveal");
     mock.delay = 0;
     const honest = await post1.locator(".hl-text").textContent();
-    assert.match(honest, /^I need attention\. \(I'm thrilled to announce/, `cleaned output, got: ${honest}`);
+    assert.match(honest, /^\[MOCK REPLY\] I.m thrilled to announce/, `cleaned output, got: ${honest}`);
     assert.equal(await post1.locator(".hl-btn").textContent(), "Show original");
     assert.equal(await post1.locator(".feed-shared-inline-show-more-text").isVisible(), false, "original hidden");
     assert.equal(await post1.locator(".comments-comments-list").isVisible(), true, "comments untouched");
@@ -170,7 +170,7 @@ async function waitFor(fn, what, timeout = 8000) {
       chrome.runtime.sendMessage({ type: "honestify", text: "Humbled to be speaking at a conference.", skipCache: true }),
     );
     assert.equal(res.error, undefined, res.error);
-    assert.match(res.text, /^I need attention, Anthropic edition/);
+    assert.match(res.text, /^\[MOCK REPLY, Anthropic\]/);
     const msgCalls = log.filter((l) => l.url === "/v1/messages");
     assert.equal(msgCalls.length, 2, "rejected effort param is dropped and retried");
     assert.deepEqual(msgCalls[0].body.output_config, { effort: "low" });
