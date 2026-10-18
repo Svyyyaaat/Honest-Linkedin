@@ -4,22 +4,30 @@
   margin: 4px 16px;
 }
 
-/* A quiet outline button in the page's own text colour, so it fits
-   LinkedIn's light and dark themes alike. */
+/* Outline button in LinkedIn blue, like LinkedIn's own secondary buttons. */
 .hl-btn {
-  font: 600 12px/1 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
-  color: inherit;
+  font: 600 13px/1 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  color: #0a66c2;
   background: transparent;
-  border: 1px solid currentColor;
+  border: 1px solid #0a66c2;
   border-radius: 999px;
-  padding: 5px 11px;
+  padding: 5px 12px;
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 .hl-btn:hover:not(:disabled),
 .hl-btn:focus-visible {
-  opacity: 1;
+  background: rgba(10, 102, 194, 0.08);
+  box-shadow: inset 0 0 0 1px #0a66c2;
+}
+.hl-dark .hl-btn {
+  color: #71b7fb;
+  border-color: #71b7fb;
+}
+.hl-dark .hl-btn:hover:not(:disabled),
+.hl-dark .hl-btn:focus-visible {
+  background: rgba(113, 183, 251, 0.12);
+  box-shadow: inset 0 0 0 1px #71b7fb;
 }
 .hl-btn:disabled {
   cursor: progress;

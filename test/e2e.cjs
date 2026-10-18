@@ -163,13 +163,24 @@ async function waitFor(fn, what, timeout = 8000) {
           color: getComputedStyle(span).color,
         };
       });
-      assert.equal(dress.pClass, "pt");
-      assert.equal(dress.spanClass, "etb x1 x2");
+      assert.equal(dress.pClass, "pt clamp");
+      assert.equal(dress.spanClass, "etb x1 x2 clamp");
       assert.equal(dress.testid, false, "identifying attributes stripped");
       assert.equal(dress.label, "What they actually mean");
       assert.equal(dress.fontSize, "14px");
       assert.equal(dress.color, "rgb(25, 25, 25)", "same text colour as a normal post");
       assert.equal(await p3.locator("#p1 p.pt:not(.hl-honest *)").isVisible(), false, "original paragraph hidden");
+      // A collapsed post: the full text was sent and the translation isn't clamped.
+      const sent2026 = log.filter((l) => l.method === "POST").at(-1).body.messages.at(-1).content;
+      assert.ok(sent2026.includes("worked weekends. Grateful!"), "text hidden behind …more is sent too");
+      await sleep(1700); // let the reveal animation finish
+      const clamp = await p3.locator("#p1 .hl-text").evaluate((el) => ({
+        lineClamp: getComputedStyle(el).webkitLineClamp,
+        cut: el.scrollHeight > el.clientHeight + 1,
+      }));
+      assert.deepEqual(clamp, { lineClamp: "none", cut: false }, "translation shown in full, not cut off");
+      const btn = await p3.locator("#p1 .hl-btn").evaluate((b) => getComputedStyle(b).color);
+      assert.equal(btn, "rgb(10, 102, 194)", "LinkedIn blue button");
       await sleep(400);
       assert.equal(await p3.locator(".hl-btn").count(), 3, "translation not mistaken for another post");
       await p3.close();

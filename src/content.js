@@ -260,6 +260,10 @@
         onButton(post);
       });
       st.bar.append(st.button);
+      // LinkedIn's dark mode is a site setting, not the system's; tell by
+      // whether the post text is light.
+      const [r, g, b] = (getComputedStyle(textEl).color.match(/[\d.]+/g) || [0, 0, 0]).map(Number);
+      st.bar.classList.toggle("hl-dark", 0.299 * r + 0.587 * g + 0.114 * b > 140);
 
       st.honestEl = document.createElement("div");
       st.honestEl.className = "hl-honest";
@@ -295,6 +299,14 @@
       const copy = strip(src.cloneNode(false));
       inner.append(copy);
       inner = copy;
+    }
+    // LinkedIn collapses long posts with CSS line-clamp on these same
+    // classes; the translation always shows in full.
+    for (const n of new Set([outer, inner])) {
+      n.style.setProperty("-webkit-line-clamp", "unset", "important");
+      n.style.setProperty("line-clamp", "none", "important");
+      n.style.setProperty("max-height", "none", "important");
+      n.style.setProperty("overflow", "visible", "important");
     }
     // Keep the text in its own element so the label can sit above it.
     if (inner === outer) inner = outer.appendChild(document.createElement("span"));
