@@ -109,7 +109,12 @@ src/options.*, popup.*   settings page and toolbar popup
 icons/icon.svg           icon source (icon-small.svg is the simplified 16px version); PNGs are rendered from these
 ```
 
-**When LinkedIn changes its markup** (it will): known selectors are at the top of `src/content.js`. If none match, as in LinkedIn's newer feed with its generated class names, a structural check takes over. A post is any card with a long block of text, a link to a profile or company, and a row of at least 6 buttons. The text that gets translated is the longest block in that card that isn't a link, a button or a comment.
+**When LinkedIn changes its markup** (it will): all page knowledge is at the top of `src/content.js`.
+- **Current feed (2026):** each post is a `role="listitem"` card inside `data-testid="mainFeed"`, and its text is `<p><span data-testid="expandable-text-box">`. Text inside a nested list item is a comment and is ignored.
+- **Older layouts:** the `feed-shared-update-v2` class names are still supported.
+- **Anything else:** a fallback treats a card as a post if it has long text, an author link and an action row.
+
+The translation copies the original paragraph's classes, so it looks like a normal post.
 
 ## Development
 

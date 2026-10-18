@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Feed | LinkedIn</title>
+<style>
+body{font-family:sans-serif;background:#f4f2ee;margin:0} main{max-width:560px;margin:0 auto}
+.card{background:#fff;margin:8px 0;padding:12px 0;border-radius:8px;min-height:420px}
+.pt{padding:0 16px;margin:0;font-size:14px;line-height:var(--i0ljt);color:rgb(25,25,25)} .etb{white-space:pre-wrap}
+</style></head>
+<body>
+<!-- Mirrors the structure of LinkedIn's 2026 feed (from a saved page):
+     role=list data-testid=mainFeed > ... > role=listitem cards, post text in
+     <p><span data-testid="expandable-text-box">. Content is made up. -->
+<main>
+<div role="list" data-testid="mainFeed" data-component-type="LazyColumn">
+  <div><div role="listitem"><div>Start a post</div><div><span>Video</span><span>Photo</span><span>Write article</span></div></div></div>
+  <div><div role="listitem"><button>New posts</button></div></div>
+
+  <div><div role="listitem" componentkey="update-card-focusAAA" id="p1"><div class="card" componentkey="AAA">
+    <h2>Feed post</h2>
+    <div><a href="https://www.linkedin.com/in/jane/">Jane Doe • 1st</a><div>Chief Synergy Officer | Keynote speaker | Dog mom</div><button>…</button><button>✕</button></div>
+    <p class="pt" style="--i0ljt:1.43" componentkey="t1"><span class="etb x1 x2" data-testid="expandable-text-box" tabindex="-1">I'm thrilled to announce that our team grew revenue 300% this year. <br> <br>None of this would have been possible without our incredible people who worked weekends. Grateful!</span></p>
+    <div style="aspect-ratio:1.5"><img alt="" src="data:,"></div>
+    <div style="min-height:4.4rem"><button>103</button><button>Like</button><button>Comment</button><button>Repost</button><button>Send</button></div>
+  </div></div></div>
+
+  <div><div role="listitem" componentkey="update-card-focusBBB" id="p2"><div class="card">
+    <div><a href="https://www.linkedin.com/company/summit/">Big Summit · Promoted</a></div>
+    <p class="pt" style="--i0ljt:1.43"><span class="etb" data-testid="expandable-text-box">With more than 800 investors and 30,000 attendees, this is the place to raise your next round. Apply now.</span></p>
+    <div><span>Startup? Apply to our programme</span></div>
+    <a href="https://www.linkedin.com/" aria-label="Apply Now">Apply Now</a>
+    <div><button>Like</button><button>Comment</button><button>Repost</button><button>Send</button><button>…</button></div>
+  </div></div></div>
+
+  <div><div role="listitem" componentkey="update-card-focusCCC" id="p3"><div class="card">
+    <h2>Feed post</h2>
+    <div><a href="https://www.linkedin.com/in/bob/">Bob Smith</a></div>
+    <div class="slot"></div>
+    <div><button>Like</button><button>Comment</button><button>Repost</button><button>Send</button></div>
+    <div role="list"><div role="listitem" class="comment"><a href="https://www.linkedin.com/in/fan/">A Fan</a>
+      <p class="pt"><span data-testid="expandable-text-box">Totally agree, this is such an important message for every leader out there!</span></p>
+      <button>Like</button><button>Reply</button></div></div>
+  </div></div></div>
+</div>
+</main>
+<script>
+  // LazyColumn: the third post's text arrives late.
+  setTimeout(() => {
+    document.querySelector("#p3 .slot").outerHTML =
+      '<p class="pt" style="--i0ljt:1.43"><span class="etb" data-testid="expandable-text-box">Hot take: AI will not replace you. A person using AI will. Follow me for daily AI insights.</span></p>';
+  }, 1200);
+</script>
+</body>
+</html>

@@ -6,8 +6,8 @@
   --border: #dedbd3;
   --accent: #0a66c2;
   --accent-text: #ffffff;
-  --honest: #e0b400;
-  --honest-bg: #fff8d6;
+  --honest: var(--border);
+  --honest-bg: var(--bg);
   --ok: #1f7a3a;
   --err: #b42318;
   color-scheme: light dark;
@@ -21,7 +21,7 @@
     --border: #3a4148;
     --accent: #71b7fb;
     --accent-text: #0b1520;
-    --honest-bg: rgba(255, 214, 10, 0.1);
+    --honest-bg: var(--bg);
     --ok: #6fcf8b;
     --err: #ff8a80;
   }

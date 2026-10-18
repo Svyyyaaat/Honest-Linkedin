@@ -1,25 +1,28 @@
 .hl-bar {
   display: flex;
   justify-content: flex-end;
-  margin: 4px 16px 4px;
+  margin: 4px 16px;
 }
 
+/* A quiet outline button in the page's own text colour, so it fits
+   LinkedIn's light and dark themes alike. */
 .hl-btn {
   font: 600 12px/1 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
-  color: #5f4b00;
-  background: #fff4c2;
-  border: 1px solid #e6cf6a;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
   border-radius: 999px;
   padding: 5px 11px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
 }
-.hl-btn:hover:not(:disabled) {
-  background: #ffe98a;
+.hl-btn:hover:not(:disabled),
+.hl-btn:focus-visible {
+  opacity: 1;
 }
 .hl-btn:disabled {
   cursor: progress;
-  opacity: 0.75;
 }
 .hl-btn.hl-loading::before {
   content: "";
@@ -39,35 +42,27 @@
   }
 }
 
+/* The translation reuses the original paragraph's own classes (cloned in
+   content.js), so it looks like a normal post. Only the label is ours. */
 .hl-honest {
-  box-sizing: border-box;
-  margin: 0 16px 8px;
-  padding: 10px 14px;
-  border-left: 3px solid #e0b400;
-  background: rgba(255, 214, 10, 0.1);
-  border-radius: 0 6px 6px 0;
   color: inherit;
 }
 .hl-honest[hidden] {
   display: none !important;
 }
 .hl-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  opacity: 0.6;
+  opacity: 0.55;
   margin-bottom: 4px;
 }
-.hl-text {
-  font-size: 14px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-}
 .hl-honest.hl-error {
-  border-left-color: #c9372c;
-  background: rgba(201, 55, 44, 0.08);
+  margin: 0 16px 8px;
   font-size: 13px;
+  opacity: 0.75;
 }
 .hl-honest.hl-error a {
   font-weight: 600;
@@ -81,18 +76,17 @@
 
 /* ------------------------------------------------------------- animation */
 
-/* While translating: the original lines dim and a golden shine sweeps
-   across them. --hl-ink is the text colour at reduced opacity (set from JS). */
+/* While translating: the original lines dim and a band of full-strength
+   text colour sweeps across them. Colours come from the text itself (set in
+   content.js), so it suits both themes. */
 .hl-translating {
   background-image: linear-gradient(
     105deg,
-    var(--hl-ink, rgba(0, 0, 0, 0.38)) 0%,
-    var(--hl-ink, rgba(0, 0, 0, 0.38)) 38%,
-    #e8b800 47%,
-    #ffd84d 50%,
-    #e8b800 53%,
-    var(--hl-ink, rgba(0, 0, 0, 0.38)) 62%,
-    var(--hl-ink, rgba(0, 0, 0, 0.38)) 100%
+    var(--hl-ink, rgba(0, 0, 0, 0.3)) 0%,
+    var(--hl-ink, rgba(0, 0, 0, 0.3)) 40%,
+    var(--hl-ink-full, #000) 50%,
+    var(--hl-ink, rgba(0, 0, 0, 0.3)) 60%,
+    var(--hl-ink, rgba(0, 0, 0, 0.3)) 100%
   );
   background-size: 250% 100%;
   background-repeat: no-repeat;
@@ -149,14 +143,4 @@
   .hl-animate .hl-label {
     animation: none;
   }
-}
-
-/* LinkedIn dark theme */
-.theme--dark .hl-btn {
-  color: #ffe58a;
-  background: rgba(255, 214, 10, 0.12);
-  border-color: rgba(255, 214, 10, 0.35);
-}
-.theme--dark .hl-btn:hover:not(:disabled) {
-  background: rgba(255, 214, 10, 0.22);
 }

@@ -14,14 +14,17 @@
     "div.occludable-update",
     "[data-view-name='feed-full-update']",
   ];
+  // Current feed (2026): each post is a role="listitem" card inside
+  // data-testid="mainFeed"; its text is <p><span data-testid="expandable-text-box">.
+  const FEED_TEXT = "[data-testid='expandable-text-box']";
   const TEXT_SELECTORS = [
+    FEED_TEXT,
     ".update-components-text",
     ".feed-shared-update-v2__description",
     ".feed-shared-inline-show-more-text",
     ".feed-shared-text",
     "[data-test-id='main-feed-activity-card__commentary']",
     ".attributed-text-segment-list__content",
-    "[data-testid='expandable-text-box']",
     "[data-view-name='feed-commentary']",
   ];
   // Text inside these belongs to comments, not to the post.
@@ -54,14 +57,32 @@
     for (const sel of POST_SELECTORS) {
       root.querySelectorAll(sel).forEach((el) => found.add(el));
     }
-    root.querySelectorAll(`[${POST_MARK}]`).forEach((el) => found.add(el)); // found earlier by the heuristic
-    found.forEach((el) => el.setAttribute(POST_MARK, ""));
-    for (const el of discoverPosts(root)) found.add(el);
+    root.querySelectorAll(FEED_TEXT).forEach((text) => {
+      if (text.closest(".hl-honest")) return;
+      const item = feedItemOf(text);
+      if (item) found.add(item);
+    });
+    // Unknown layout: fall back to guessing from the page's shape.
+    if (!found.size) {
+      root.querySelectorAll(`[${POST_MARK}]`).forEach((el) => found.add(el)); // found earlier by the heuristic
+      for (const el of discoverPosts(root)) found.add(el);
+    }
     // Keep only the outermost match so a post isn't handled twice.
     return [...found].filter((el) => {
       for (let a = el.parentElement; a; a = a.parentElement) if (found.has(a)) return false;
       return true;
     });
+  }
+
+  // The feed card holding an element: its outermost role="listitem" below the
+  // feed list (comments can be list items nested inside a post).
+  function feedItemOf(el) {
+    let item = null;
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+      if (a.getAttribute("role") === "listitem") item = a;
+      if (a.getAttribute("data-testid") === "mainFeed") break;
+    }
+    return item;
   }
 
   // Paragraph-level block holding a text node: its closest non-inline ancestor.
@@ -128,13 +149,21 @@
     for (const sel of TEXT_SELECTORS) {
       for (const el of post.querySelectorAll(sel)) {
         if (el.closest(EXCLUDE_ANCESTORS)) continue;
+        // Text in a list item nested inside the post is a comment.
+        if (post.getAttribute("role") === "listitem" && el.closest("[role='listitem']") !== post) continue;
         if (readText(el).length >= MIN_TEXT_LENGTH) {
-          // Prefer the outer wrapper that also contains the "see more" toggle,
-          // so hiding it hides everything.
-          return el.closest(".feed-shared-inline-show-more-text") || el;
+          // Prefer the wrapper that also holds the "see more" toggle (old
+          // layout) or the paragraph around the text (new layout), so hiding
+          // it hides everything.
+          return (
+            el.closest(".feed-shared-inline-show-more-text") ||
+            (el.parentElement?.tagName === "P" ? el.parentElement : el)
+          );
         }
       }
     }
+    // Current feed: no text box yet means the text hasn't loaded; wait for it.
+    if (post.getAttribute("role") === "listitem") return null;
     // Fallback: the longest text block that isn't a comment, a link (the
     // author's name and headline are links) or a button.
     let best = null;
@@ -247,6 +276,31 @@
     return st;
   }
 
+  // Empty copy of an element and its single-child wrappers (e.g. <p><span>),
+  // keeping tags, classes and styles but none of the identifying attributes.
+  function shellLike(el) {
+    const strip = (n) => {
+      for (const attr of ["id", "data-testid", "componentkey", "data-urn", "data-id", "dir", "tabindex"]) {
+        n.removeAttribute(attr);
+      }
+      n.classList.remove("hl-hidden", "hl-translating");
+      n.style.removeProperty("--hl-ink");
+      n.style.removeProperty("--hl-ink-full");
+      return n;
+    };
+    const outer = strip(el ? el.cloneNode(false) : document.createElement("div"));
+    let inner = outer;
+    for (let src = el; src && src.children.length === 1 && textLen(src.children[0]) >= textLen(src) - 2; ) {
+      src = src.children[0];
+      const copy = strip(src.cloneNode(false));
+      inner.append(copy);
+      inner = copy;
+    }
+    // Keep the text in its own element so the label can sit above it.
+    if (inner === outer) inner = outer.appendChild(document.createElement("span"));
+    return { outer, inner };
+  }
+
   function render(post) {
     const st = getState(post);
     if (!st.bar) return;
@@ -271,11 +325,13 @@
     honestEl.replaceChildren();
     honestEl.hidden = st.view !== "honest" && st.view !== "error";
     if (st.view === "honest") {
-      const label = document.createElement("div");
+      // Dress the translation exactly like the post text: copy the original
+      // paragraph's tags and classes (not its content).
+      const { outer, inner } = shellLike(textEl);
+      const label = document.createElement("span");
       label.className = "hl-label";
       label.textContent = "What they actually mean";
-      const body = document.createElement("div");
-      body.className = "hl-text";
+      inner.classList.add("hl-text");
       // One span per word so the reveal animation can stagger them.
       const parts = st.honest.split(/(\s+)/);
       const words = parts.filter((p) => p && !/^\s+$/.test(p)).length;
@@ -284,16 +340,17 @@
       for (const part of parts) {
         if (!part) continue;
         if (/^\s+$/.test(part)) {
-          body.append(part);
+          inner.append(part);
         } else {
           const w = document.createElement("span");
           w.className = "hl-w";
           w.style.animationDelay = `${Math.round(120 + i++ * step)}ms`;
           w.textContent = part;
-          body.append(w);
+          inner.append(w);
         }
       }
-      honestEl.append(label, body);
+      outer.prepend(label);
+      honestEl.append(outer);
       honestEl.classList.remove("hl-error");
     } else if (st.view === "error") {
       honestEl.classList.add("hl-error");
@@ -314,7 +371,8 @@
       // gradient is built from the text's own colour so it suits both themes.
       if (st.view === "loading" && !textEl.classList.contains("hl-translating")) {
         const m = getComputedStyle(textEl).color.match(/[\d.]+/g) || [0, 0, 0];
-        textEl.style.setProperty("--hl-ink", `rgba(${m[0]}, ${m[1]}, ${m[2]}, 0.38)`);
+        textEl.style.setProperty("--hl-ink", `rgba(${m[0]}, ${m[1]}, ${m[2]}, 0.3)`);
+        textEl.style.setProperty("--hl-ink-full", `rgb(${m[0]}, ${m[1]}, ${m[2]})`);
       }
       textEl.classList.toggle("hl-translating", st.view === "loading");
     }

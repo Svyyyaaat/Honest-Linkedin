@@ -13,6 +13,7 @@ const { createMock } = require("./mock-llm.cjs");
 const ROOT = path.resolve(__dirname, "..");
 const FEED = fs.readFileSync(path.join(__dirname, "fixture-feed.html"), "utf8");
 const FEED_NEW = fs.readFileSync(path.join(__dirname, "fixture-feed-new.html"), "utf8");
+const FEED_2026 = fs.readFileSync(path.join(__dirname, "fixture-feed-2026.html"), "utf8");
 const PORT = 18787;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -44,7 +45,11 @@ async function waitFor(fn, what, timeout = 8000) {
       route.fulfill({
         status: 200,
         contentType: "text/html",
-        body: route.request().url().includes("new-feed") ? FEED_NEW : FEED,
+        body: route.request().url().includes("feed-2026")
+          ? FEED_2026
+          : route.request().url().includes("new-feed")
+            ? FEED_NEW
+            : FEED,
       }),
     );
 
@@ -93,7 +98,7 @@ async function waitFor(fn, what, timeout = 8000) {
     const honest = await post1.locator(".hl-text").textContent();
     assert.match(honest, /^\[MOCK REPLY\] I.m thrilled to announce/, `cleaned output, got: ${honest}`);
     assert.equal(await post1.locator(".hl-btn").textContent(), "Show original");
-    assert.equal(await post1.locator(".feed-shared-inline-show-more-text").isVisible(), false, "original hidden");
+    assert.equal(await post1.locator(".feed-shared-inline-show-more-text:not(.hl-honest *)").isVisible(), false, "original hidden");
     assert.equal(await post1.locator(".comments-comments-list").isVisible(), true, "comments untouched");
     assert.ok(!log.some((l) => l.rejected), "local server's Origin check passes (Origin rewritten for localhost)");
     const sent = log.find((l) => l.method === "POST").body.messages[1].content;
@@ -103,7 +108,7 @@ async function waitFor(fn, what, timeout = 8000) {
 
     await post1.locator(".hl-btn").click();
     assert.equal(await post1.locator(".hl-btn").textContent(), "Honestify");
-    assert.equal(await post1.locator(".feed-shared-inline-show-more-text").isVisible(), true, "original shown again");
+    assert.equal(await post1.locator(".feed-shared-inline-show-more-text:not(.hl-honest *)").isVisible(), true, "original shown again");
     await post1.locator(".hl-btn").click();
     assert.equal(await post1.locator(".hl-btn").textContent(), "Show original");
     assert.equal(llmCalls(), 1, "toggling back reuses the result");
@@ -129,7 +134,48 @@ async function waitFor(fn, what, timeout = 8000) {
     await waitFor(() => page.locator("[data-urn='urn:li:activity:1'] .hl-text").count(), "cached text");
     assert.equal(llmCalls(), 1, "cache hit after reload");
 
-    // ------------------------------------------ newer LinkedIn markup (heuristic)
+    // ----------------------------------------------- LinkedIn 2026 feed markup
+    {
+      const p3 = await context.newPage();
+      await p3.goto("https://www.linkedin.com/feed-2026/");
+      await p3.waitForSelector("#p1 .hl-btn");
+      await waitFor(() => p3.locator("#p3 .hl-btn").count(), "button on the lazily loaded post");
+      await sleep(600);
+      for (const id of ["p1", "p2", "p3"]) {
+        assert.equal(await p3.locator(`#${id} .hl-btn`).count(), 1, `exactly one button on ${id}`);
+      }
+      assert.equal(await p3.locator(".hl-btn").count(), 3, "no buttons on 'Start a post', 'New posts' or the comment");
+      assert.ok(await p3.locator("#p2 .hl-bar + .hl-honest + p").count(), "promoted post (5 buttons) handled");
+      assert.ok(await p3.locator("#p3 .hl-bar + .hl-honest + p .etb").count(), "bar sits on the post, not the comment");
+
+      await p3.locator("#p1 .hl-btn").click();
+      await waitFor(() => p3.locator("#p1 .hl-text").count(), "translation shown");
+      // Dressed like the original paragraph: same tags and classes, no ids.
+      const dress = await p3.locator("#p1 .hl-honest").evaluate((h) => {
+        const p = h.querySelector("p");
+        const span = p.querySelector("span.hl-text");
+        return {
+          pClass: p.className,
+          spanClass: span.className.replace(" hl-text", ""),
+          testid: !!h.querySelector("[data-testid], [componentkey]"),
+          label: h.querySelector(".hl-label").textContent,
+          fontSize: getComputedStyle(span).fontSize,
+          color: getComputedStyle(span).color,
+        };
+      });
+      assert.equal(dress.pClass, "pt");
+      assert.equal(dress.spanClass, "etb x1 x2");
+      assert.equal(dress.testid, false, "identifying attributes stripped");
+      assert.equal(dress.label, "What they actually mean");
+      assert.equal(dress.fontSize, "14px");
+      assert.equal(dress.color, "rgb(25, 25, 25)", "same text colour as a normal post");
+      assert.equal(await p3.locator("#p1 p.pt:not(.hl-honest *)").isVisible(), false, "original paragraph hidden");
+      await sleep(400);
+      assert.equal(await p3.locator(".hl-btn").count(), 3, "translation not mistaken for another post");
+      await p3.close();
+    }
+
+    // ------------------------------------------ unknown markup (shape heuristic)
     {
       const p2 = await context.newPage();
       await p2.goto("https://www.linkedin.com/new-feed/");
@@ -150,7 +196,7 @@ async function waitFor(fn, what, timeout = 8000) {
       assert.ok(sentNew.includes("Today is the birthday") && sentNew.includes("Let me know what you think"), "whole post sent");
       assert.ok(!sentNew.includes("Talent Investor") && !sentNew.includes("Congratulations Alina"), "no headline or comment");
       assert.ok(!sentNew.includes("…more"), "no …more");
-      assert.equal(await card.locator("._t9q").isVisible(), false, "original hidden");
+      assert.equal(await card.locator("._t9q:not(.hl-honest *)").isVisible(), false, "original hidden");
       assert.equal(await card.locator("._img").isVisible(), true, "image untouched");
       assert.equal(llmCalls(), before + 1);
       // LinkedIn re-renders posts; the button must come back.
