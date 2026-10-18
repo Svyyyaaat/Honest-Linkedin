@@ -4,11 +4,11 @@ A browser extension for Chrome and Firefox that rewrites LinkedIn posts as what 
 
 > **Post:** Started my morning at the Davos panel on income inequality. Grateful for these honest conversations. Flew in privately, but offset the emissions. 🌍
 >
-> **Honest version:** I spent my morning at the Davos panel on income inequality, after flying in privately. Nobody on the panel earns under $2 million. We agreed it's a problem.
+> **Honest version:** I flew a private jet to Davos to talk about income inequality with other rich people. I paid a fee so I don't have to feel bad about it.
 
-> **Post:** Excited to announce I'm stepping down as CEO to spend more time with my family. I'll remain on the board as Executive Chairman.
+> **Post:** Our new AI hiring tool screened 10,000 applicants in an hour! 🤖 It rejected 9,994 of them. We're thrilled with the efficiency gains.
 >
-> **Honest version:** I'm stepping down as CEO to spend time with family, staying on as Executive Chairman. The board voted 6 to 1. The 1 was me.
+> **Honest version:** Our AI hiring tool rejected 9,994 of 10,000 applicants in an hour. We're thrilled, because nobody had to actually read the resumes.
 
 You bring your own model: Claude, OpenAI, Gemini, OpenRouter, Groq, Mistral, DeepSeek, xAI, Together, a local Ollama or LM Studio, or any OpenAI-compatible endpoint.
 
@@ -39,14 +39,14 @@ Switch modes, or turn the extension off, from the toolbar popup.
 
 ## Keeping token use low
 
-- One request per post. The system prompt is about 800 tokens, the post is capped at 3,000 characters, and the answer is under 35 words.
-- **Brainstorm** (on by default, can be turned off in settings): the model writes three drafts and only the funniest is shown. That's about 3× the output tokens (roughly 200 instead of 60), and it made a clear difference for small models.
+- One request per post. The system prompt is about 700 tokens, the post is capped at 3,000 characters, and the answer is under 45 words.
+- **Brainstorm** (off by default): the model writes three drafts and shows the bluntest one. That's about 3× the output tokens.
 - No prefetching. Auto mode needs a post to stay on screen for a moment.
 - Results are cached by post text, model and prompt version (last 400). Re-showing a post or reloading the page costs nothing.
 - At most 2 requests run at once. Identical posts share one request.
 - Reasoning models are asked for low effort: `effort: low` on Claude, `reasoning_effort: low` on OpenAI's GPT-5/o-series. A server that rejects one of these settings gets the request again without it.
 
-A rough guide, with brainstorming on: about 0.025¢ per post with Claude Haiku 5.5, and about 1¢ with Claude Opus 5.5.
+A rough guide: about 0.01¢ per post with Claude Haiku 5.5, and about 0.5¢ with Claude Opus 5.5.
 
 ## Providers
 
@@ -77,28 +77,22 @@ The prompt lives in [`src/prompt.js`](src/prompt.js). It asks for the post rewri
 
 ### Calibration across Claude models
 
-The translation **replaces** the post, so it has to work for a reader who never sees the original, and it has to be an actual joke.
+The style is **blunt translation**, like subtitles for corporate speak. The answer says plainly what the post means, in the author's voice. Each euphemism is swapped for the truth, nothing is invented, and there are no riddles. It replaces the post, so it has to make sense to someone who never saw the original.
 
-The prompt went through eight versions over seven test rounds, on Claude Haiku, Sonnet and Opus. Every round after the first two used a **new set of 10–12 posts no earlier version had been tuned on**. The sets covered humblebrags, layoffs, grief, return-to-office memos, AI hype, engagement bait, posts in German, French and Spanish, and a prompt-injection attempt.
+How it got here: the prompt went through nine versions, tested on Claude Haiku, Sonnet and Opus with sets of fresh, realistic posts. The models were given the prompt directly; the runs did not go through the extension's own API calls.
+- **Fixed early:**
+  - the model analyzing the post instead of speaking as the author
+  - prompt injection
+  - answers that only made sense next to the original post
+- **A detour:** for a few rounds I tuned against an AI judge that rewarded clever twist punchlines. Its scores went up, but real readers were left going "what?". The twists needed decoding and often invented facts, like a board vote or a made-up price.
+- **The fix:** a side-by-side test on the same posts with a human reader. The blunt style won easily. It also turned out to be the style small models handle well: Haiku is nearly as good as Opus at it.
 
-The models were given the system prompt directly; the runs did not go through the extension's own API calls. A strict judge saw only the translations, never the original posts or which version wrote what. It rated each one 1–5 for funny (4 is a real laugh) and checked whether it made sense on its own.
-
-| Version | Change | What happened |
+| Post | Haiku 5.5 | Opus 5.5 |
 | --- | --- | --- |
-| v1–v2 | Basic brief → "only the author speaks", post in `<post>` tags | Fixed post analysis and prompt injection, but settled into flat "I did X. I'm posting so Y." |
-| v3 | One punchline with a turn | Preferred over v2 in 17 of 24 blind pairs, but often only made sense next to the original |
-| v4–v5 | Must work on its own: short setup + punchline | Understandable 10 of 10 times, vs 7 of 10 for v3. Haiku scored **2.1/5**: it stated the cynical point instead of showing it. |
-| v6 | Joke techniques + "brainstorm 3, pick 1" | Haiku 2.2 → **2.7** with brainstorming |
-| v7 | **Show, don't tell**: the punchline is a concrete fact, number or scene, never the moral | Haiku with brainstorming: **3.2**, against 2.4 for v6 on the same posts |
-| **v8** | One joke only, no stacked jabs | Same Haiku scores (within noise). Opus is the best yet: **3.6/5, with 7 of 12 getting a real laugh**. |
-
-Where it stands (v8, with the brainstorm setting as shipped):
-
-- **Opus 5.5:** consistently funny, with about half the posts getting a real laugh. *"The board voted 6 to 1. The 1 was me."* · *"Our company has 47 Vice Presidents. It has 31 employees."* · *"Our runway was 30 months. The slide made it 22."*
-- **Sonnet 5.5:** ~2.8–2.9. Solid, occasionally great (*"Q4 me just updated his resume."*).
-- **Haiku 5.5:** ~2.5–3.2, depending on the batch. It has some genuinely good lines, such as *"Sorting the cans took 20 minutes. The team photo took 40."*, *"The satisfaction survey was sent by the chatbot. It gave itself five stars."* and *"The offset cost $40. The jet cost $80,000."* But it's hit-and-miss, and the last two prompt changes stopped improving it. Brainstorming matters most for Haiku.
-
-Every answer made sense without the original in the last two rounds, apart from one Haiku line in round 7.
+| Stepping down as CEO "to spend more time with family", staying on as Executive Chairman | I'm stepping down as CEO, but I'm keeping a board seat and a new title, so I'm still in charge. Family is the stated reason. | I'm no longer CEO, and family is the polite reason we agreed on. I'm keeping a board seat and a fancy title so it doesn't look like I was pushed out. |
+| Raised $20M, new office with a slide, nap pod and kombucha tap | We raised $20M. Instead of hiring engineers or paying people well, we're spending it on a slide, a nap pod and a kombucha tap. We're calling that culture. | We raised $20 million from investors. We're spending it on a slide, a nap pod and a kombucha tap. Snacks are cheaper than paying people more. |
+| Bought the team a Calm subscription "during crunch season" | I bought the team a meditation app. We're also in crunch season, and I'm not cutting the workload. A meditation app is cheaper than fixing the crunch. | I'm working my team to exhaustion during crunch. I bought them a meditation app instead of hiring more people or cutting the hours. |
+| 50,000 followers, "the secret: consistency, authenticity and engagement pods" | I hit 50,000 followers. The real secret is engagement pods, groups that like each other's posts to fake reach. | I have 50,000 followers now. A big part of it is a group of people who agree to like each other's posts. That's the secret. |
 
 To change the tone without editing code, use **Extra instructions** in the settings.
 

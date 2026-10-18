@@ -15,7 +15,7 @@ export const PROVIDERS = [
     needsKey: true,
     keyHint: "sk-ant-…",
     modelHint:
-      "In our tests Opus 5.5 was clearly the funniest (about 1¢ a post with brainstorming). Haiku 5.5 is decent and about 40× cheaper, which suits auto mode.",
+      "In our tests Haiku 5.5 handled this style nearly as well as Opus 5.5, at about 1/40 of the cost.",
     models: [
       "claude-haiku-5-5",
       "claude-sonnet-5-5",
@@ -138,7 +138,7 @@ export const DEFAULT_SETTINGS = {
   // Per-provider overrides: { [providerId]: { baseUrl, format, apiKey, model, fetchedModels } }
   providers: {},
   extraInstructions: "",
-  brainstorm: true, // draft 3 options and keep the best: funnier, ~3x output tokens
+  brainstorm: false, // draft 3 options and keep the best; ~3x output tokens
 };
 
 // Resolve the effective endpoint config for the active provider.
