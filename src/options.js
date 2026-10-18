@@ -26,7 +26,8 @@ function providerConfig(id) {
 
 function fillModelSelect(id, selected, fetched) {
   const preset = getPreset(id);
-  const names = [...new Set([...preset.models, ...(fetched || [])])];
+  // Once the server has told us what it has, show only that.
+  const names = [...new Set(fetched?.length ? fetched : preset.models)];
   if (selected && !names.includes(selected)) names.unshift(selected);
   const sel = $("model");
   sel.replaceChildren();
@@ -132,7 +133,13 @@ async function save() {
 
 // ------------------------------------------------------------------- events
 
-$("provider").addEventListener("change", () => loadProviderIntoForm($("provider").value));
+// Local servers are free to ask, so list their models right away.
+const isLocal = (url) => /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(url);
+
+$("provider").addEventListener("change", () => {
+  loadProviderIntoForm($("provider").value);
+  if (isLocal($("baseUrl").value)) fetchModels();
+});
 $("model").addEventListener("change", onModelChange);
 
 $("toggle-key").addEventListener("click", () => {
@@ -147,9 +154,7 @@ $("save").addEventListener("click", async () => {
   await access;
 });
 
-$("refresh-models").addEventListener("click", async () => {
-  const access = requestEndpointAccess($("baseUrl").value);
-  await access;
+async function fetchModels() {
   const form = readForm();
   const btn = $("refresh-models");
   btn.disabled = true;
@@ -164,13 +169,18 @@ $("refresh-models").addEventListener("click", async () => {
       [form.id]: { ...settings.providers?.[form.id], fetchedModels: models },
     };
     await api.storage.local.set({ settings });
-    fillModelSelect(form.id, form.model || models[0], models);
+    fillModelSelect(form.id, models.includes(form.model) ? form.model : models[0], models);
   } catch (e) {
     $("model-hint").textContent = `Couldn't fetch models: ${e.message}`;
   } finally {
     btn.disabled = false;
     btn.textContent = "Fetch models";
   }
+}
+
+$("refresh-models").addEventListener("click", async () => {
+  await requestEndpointAccess($("baseUrl").value);
+  await fetchModels();
 });
 
 $("test").addEventListener("click", async () => {
@@ -214,6 +224,7 @@ $("extraInstructions").value = settings.extraInstructions || "";
 $("brainstorm").checked = settings.brainstorm;
 $("sample").value = SAMPLE_POST;
 loadProviderIntoForm(settings.activeProvider);
+if (isLocal($("baseUrl").value)) fetchModels();
 
 // Firefox treats host permissions as opt-in; make missing LinkedIn access obvious.
 api.permissions.contains(LINKEDIN).then((ok) => ($("linkedin-access").hidden = ok));

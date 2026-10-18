@@ -217,6 +217,32 @@ async function waitFor(fn, what, timeout = 8000) {
     assert.equal(msgCalls[1].headers["x-api-key"], "sk-ant-test");
     assert.equal(msgCalls[1].headers["anthropic-dangerous-direct-browser-access"], "true");
 
+    // Ollama: native API with thinking off; retried without the flag for
+    // models that don't think.
+    for (const model of ["thinker:4b", "plain:3b"]) {
+      await setSettings({
+        ...base,
+        activeProvider: "ollama",
+        providers: { ollama: { baseUrl: `http://localhost:${PORT}/v1`, model } },
+      });
+      const r = await opts.evaluate(() =>
+        chrome.runtime.sendMessage({ type: "honestify", text: "Grateful to announce my new role!", skipCache: true }),
+      );
+      assert.equal(r.error, undefined, `${model}: ${r.error}`);
+      assert.match(r.text, /^\[MOCK REPLY, Ollama\]/);
+    }
+    const ollamaCalls = log.filter((l) => l.url === "/api/chat");
+    assert.equal(ollamaCalls[0].body.think, false, "thinking switched off");
+    assert.equal(ollamaCalls.length, 3, "one call for the thinking model, two (retry without flag) for the other");
+
+    // Options page with a local server: lists exactly the server's models.
+    await opts.reload();
+    await waitFor(
+      () => opts.$$eval("#model option", (o) => o.map((x) => x.value).join(",") === "mock-large,mock-small,__custom__"),
+      "only the server's own models listed",
+    );
+    await setSettings(base);
+
     const models = await opts.evaluate(() =>
       chrome.runtime.sendMessage({
         type: "listModels",

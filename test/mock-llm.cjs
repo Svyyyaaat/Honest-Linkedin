@@ -50,6 +50,17 @@ function createMock() {
           ],
         });
       }
+      if (req.url === "/api/chat") {
+        // Ollama's native API. "thinker" models think by default and, like a
+        // small reasoning model, run out of tokens before answering; others
+        // reject the think flag.
+        if (json.model.startsWith("thinker")) {
+          if (json.think !== false) return send(200, { message: { role: "assistant", content: "", thinking: "hmm..." } });
+        } else if ("think" in json) {
+          return send(400, { error: `"${json.model}" does not support thinking` });
+        }
+        return send(200, { message: { role: "assistant", content: wrap(`[MOCK REPLY, Ollama] ${snippet}`) } });
+      }
       send(404, { error: { message: "not found" } });
     });
   });

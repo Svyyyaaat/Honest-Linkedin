@@ -141,6 +141,31 @@ async function callOpenAI(cfg, system, user) {
   return content || "";
 }
 
+// Ollama: use its native API, where thinking can be switched off. Reasoning
+// models (qwen3, deepseek-r1, ...) otherwise spend the whole budget thinking
+// and return an empty answer. Models without thinking reject the flag, and
+// postWithFallback then retries without it.
+export const isOllama = (cfg) => cfg.id === "ollama" || /:11434(\/|$)/.test(cfg.baseUrl);
+
+async function callOllama(cfg, system, user) {
+  const root = cfg.baseUrl.replace(/\/v1$/, "");
+  const data = await postWithFallback(
+    `${root}/api/chat`,
+    cfg,
+    {
+      model: cfg.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      stream: false,
+      options: { num_predict: 700 },
+    },
+    { think: false },
+  );
+  return data?.message?.content || "";
+}
+
 export async function honestify(cfg, postText, { extraInstructions, brainstorm } = {}) {
   if (!cfg.baseUrl) throw new LLMError("No API endpoint set. Open the settings.");
   if (!cfg.model) throw new LLMError("No model selected. Open the settings.");
@@ -148,9 +173,18 @@ export async function honestify(cfg, postText, { extraInstructions, brainstorm }
   const system = buildSystemPrompt(brainstorm);
   const user = buildUserMessage(postText, extraInstructions);
   const raw =
-    cfg.format === "anthropic" ? await callAnthropic(cfg, system, user) : await callOpenAI(cfg, system, user);
+    cfg.format === "anthropic"
+      ? await callAnthropic(cfg, system, user)
+      : isOllama(cfg)
+        ? await callOllama(cfg, system, user)
+        : await callOpenAI(cfg, system, user);
   const out = cleanOutput(raw);
-  if (!out) throw new LLMError("The model returned nothing. Maybe it was speechless.");
+  if (!out) {
+    throw new LLMError(
+      "The model returned an empty answer. Reasoning models sometimes spend their whole budget thinking; " +
+        "try a non-reasoning model.",
+    );
+  }
   return out;
 }
 
