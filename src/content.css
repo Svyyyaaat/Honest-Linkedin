@@ -1,0 +1,89 @@
+.hl-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 16px 4px;
+}
+
+.hl-btn {
+  font: 600 12px/1 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  color: #5f4b00;
+  background: #fff4c2;
+  border: 1px solid #e6cf6a;
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hl-btn:hover:not(:disabled) {
+  background: #ffe98a;
+}
+.hl-btn:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+.hl-btn.hl-loading::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: hl-spin 0.7s linear infinite;
+}
+@keyframes hl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hl-honest {
+  margin: 0 16px 8px;
+  padding: 10px 14px;
+  border-left: 3px solid #e0b400;
+  background: rgba(255, 214, 10, 0.1);
+  border-radius: 0 6px 6px 0;
+  color: inherit;
+}
+.hl-honest[hidden] {
+  display: none !important;
+}
+.hl-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 4px;
+}
+.hl-text {
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.hl-honest.hl-error {
+  border-left-color: #c9372c;
+  background: rgba(201, 55, 44, 0.08);
+  font-size: 13px;
+}
+.hl-honest.hl-error a {
+  font-weight: 600;
+  text-decoration: underline;
+  color: inherit;
+}
+
+.hl-hidden {
+  display: none !important;
+}
+
+/* LinkedIn dark theme */
+.theme--dark .hl-btn {
+  color: #ffe58a;
+  background: rgba(255, 214, 10, 0.12);
+  border-color: rgba(255, 214, 10, 0.35);
+}
+.theme--dark .hl-btn:hover:not(:disabled) {
+  background: rgba(255, 214, 10, 0.22);
+}

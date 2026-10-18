@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Honest LinkedIn</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body class="popup">
+    <header class="popup-head">
+      <img src="../icons/icon-32.png" alt="" width="24" height="24" />
+      <h1>Honest LinkedIn</h1>
+      <label class="switch" title="Enable / disable">
+        <input type="checkbox" id="enabled" />
+        <span></span>
+      </label>
+    </header>
+
+    <fieldset class="modes" id="modes">
+      <label class="mode">
+        <input type="radio" name="mode" value="button" />
+        <span>
+          <strong>Click to honestify</strong>
+          <small>A button on every post. Tokens only when you ask.</small>
+        </span>
+      </label>
+      <label class="mode">
+        <input type="radio" name="mode" value="auto" />
+        <span>
+          <strong>Auto as you scroll</strong>
+          <small>Translates posts you actually stop on. Nothing in advance.</small>
+        </span>
+      </label>
+    </fieldset>
+
+    <p class="current" id="current"></p>
+    <button type="button" id="open-options" class="secondary wide">Settings</button>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

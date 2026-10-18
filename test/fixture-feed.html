@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Feed | LinkedIn</title>
+<style>body{font-family:sans-serif;background:#f4f2ee;margin:0}.scaffold{max-width:560px;margin:0 auto}
+.feed-shared-update-v2{background:#fff;margin:12px 0;padding:12px 0;min-height:700px;border-radius:8px}</style></head>
+<body>
+<!-- Simplified copy of LinkedIn's feed markup (class names as of 2025/2026). -->
+<main class="scaffold">
+  <div class="feed-shared-update-v2" data-urn="urn:li:activity:1">
+    <div class="update-components-actor">Jane Doe · Senior Synergy Lead</div>
+    <div class="feed-shared-update-v2__description-wrapper">
+      <div class="feed-shared-inline-show-more-text">
+        <div class="update-components-text"><span dir="ltr">I'm thrilled to announce I've been promoted to Chief Vision Officer! Grateful for this incredible journey. #Blessed</span></div>
+        <button class="feed-shared-inline-show-more-text__see-more-less-toggle">…more</button>
+      </div>
+    </div>
+    <div class="comments-comments-list">
+      <article class="comments-comment-entity">
+        <div class="comments-comment-item__main-content"><div class="update-components-text"><span dir="ltr">Congrats Jane!! So well deserved, you are an inspiration to us all.</span></div></div>
+      </article>
+    </div>
+  </div>
+  <div class="feed-shared-update-v2" data-urn="urn:li:activity:2">
+    <div class="update-components-text"><span dir="ltr">5 AM. Cold shower. 10 km run. Journaling. People ask how I find the time. You make it.</span></div>
+  </div>
+  <div class="feed-shared-update-v2" data-urn="urn:li:activity:3">
+    <div class="update-components-text"><span dir="ltr">Hiring is broken. I got 1,200 applications for one junior role. Here is my unpopular take.</span></div>
+  </div>
+  <div class="feed-shared-update-v2" data-urn="urn:li:activity:4">
+    <div class="update-components-text"><span dir="ltr">We just closed our $4M seed round! When we started in my garage, people laughed.</span></div>
+  </div>
+  <div class="feed-shared-update-v2" data-urn="urn:li:activity:5">
+    <div class="update-components-actor">Image-only post</div>
+  </div>
+</main>
+<script>
+  // Simulate infinite scroll: append a post when near the bottom.
+  let n = 6;
+  addEventListener("scroll", () => {
+    if (innerHeight + scrollY > document.body.scrollHeight - 300 && n < 9) {
+      const d = document.createElement("div");
+      d.className = "feed-shared-update-v2";
+      d.dataset.urn = "urn:li:activity:" + n;
+      d.innerHTML = '<div class="update-components-text"><span dir="ltr">Lazy-loaded post number ' + n + ' about synergy and leadership lessons.</span></div>';
+      document.querySelector("main").append(d);
+      n++;
+    }
+  });
+</script>
+</body>
+</html>
