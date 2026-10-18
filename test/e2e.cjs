@@ -12,6 +12,7 @@ const { createMock } = require("./mock-llm.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const FEED = fs.readFileSync(path.join(__dirname, "fixture-feed.html"), "utf8");
+const FEED_NEW = fs.readFileSync(path.join(__dirname, "fixture-feed-new.html"), "utf8");
 const PORT = 18787;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -40,7 +41,11 @@ async function waitFor(fn, what, timeout = 8000) {
   });
   try {
     await context.route("https://www.linkedin.com/**", (route) =>
-      route.fulfill({ status: 200, contentType: "text/html", body: FEED }),
+      route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: route.request().url().includes("new-feed") ? FEED_NEW : FEED,
+      }),
     );
 
     let [sw] = context.serviceWorkers();
@@ -90,6 +95,7 @@ async function waitFor(fn, what, timeout = 8000) {
     assert.equal(await post1.locator(".hl-btn").textContent(), "Show original");
     assert.equal(await post1.locator(".feed-shared-inline-show-more-text").isVisible(), false, "original hidden");
     assert.equal(await post1.locator(".comments-comments-list").isVisible(), true, "comments untouched");
+    assert.ok(!log.some((l) => l.rejected), "local server's Origin check passes (Origin rewritten for localhost)");
     const sent = log.find((l) => l.method === "POST").body.messages[1].content;
     assert.ok(!sent.includes("…more"), "'see more' toggle text not sent to the model");
     assert.ok(!sent.includes("Congrats Jane"), "comments not sent to the model");
@@ -123,12 +129,44 @@ async function waitFor(fn, what, timeout = 8000) {
     await waitFor(() => page.locator("[data-urn='urn:li:activity:1'] .hl-text").count(), "cached text");
     assert.equal(llmCalls(), 1, "cache hit after reload");
 
+    // ------------------------------------------ newer LinkedIn markup (heuristic)
+    {
+      const p2 = await context.newPage();
+      await p2.goto("https://www.linkedin.com/new-feed/");
+      await p2.waitForSelector(".hl-btn");
+      await sleep(500);
+      assert.equal(await p2.locator(".hl-btn").count(), 2, "one button per post in the new layout (none on header, aside, comments)");
+      const card = p2.locator("._c1").first();
+      assert.equal(await card.locator(".hl-btn").count(), 1);
+      // The bar sits right above the post text, not the headline or the comment.
+      const nextIsText = await card.locator(".hl-bar").evaluate(
+        (bar) => bar.nextElementSibling.nextElementSibling.classList.contains("_t9q"),
+      );
+      assert.ok(nextIsText, "text block found (and grown to include the …more button)");
+      const before = llmCalls();
+      await card.locator(".hl-btn").click();
+      await waitFor(() => card.locator(".hl-text").count(), "honest text (new layout)");
+      const sentNew = log.filter((l) => l.method === "POST").at(-1).body.messages.at(-1).content;
+      assert.ok(sentNew.includes("Today is the birthday") && sentNew.includes("Let me know what you think"), "whole post sent");
+      assert.ok(!sentNew.includes("Talent Investor") && !sentNew.includes("Congratulations Alina"), "no headline or comment");
+      assert.ok(!sentNew.includes("…more"), "no …more");
+      assert.equal(await card.locator("._t9q").isVisible(), false, "original hidden");
+      assert.equal(await card.locator("._img").isVisible(), true, "image untouched");
+      assert.equal(llmCalls(), before + 1);
+      // LinkedIn re-renders posts; the button must come back.
+      await p2.evaluate(() => document.querySelectorAll(".hl-bar, .hl-honest").forEach((n) => n.remove()));
+      await waitFor(() => card.locator(".hl-btn").count(), "button re-attached after re-render");
+      assert.equal(await card.locator(".hl-btn").textContent(), "Show original", "state kept across re-render");
+      await p2.close();
+    }
+
     // ------------------------------------------------------------ auto mode
     await setSettings({ ...base, mode: "auto" });
+    const beforeAuto = llmCalls();
     await page.locator("[data-urn='urn:li:activity:2']").scrollIntoViewIfNeeded();
     await waitFor(() => page.locator("[data-urn='urn:li:activity:2'] .hl-text").count(), "auto translation");
     await sleep(1500);
-    assert.equal(llmCalls(), 2, "auto mode translates only the post on screen");
+    assert.equal(llmCalls(), beforeAuto + 1, "auto mode translates only the post on screen");
     assert.equal(await page.locator("[data-urn='urn:li:activity:4'] .hl-text").count(), 0, "far-away post untouched");
 
     // Fast scrolling past posts should not translate them.

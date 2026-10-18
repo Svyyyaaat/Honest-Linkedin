@@ -33,9 +33,52 @@ async function cachePut(key, text) {
   await api.storage.local.set({ [CACHE_KEY]: cache });
 }
 
+// Local servers (Ollama, LM Studio...) often reject requests whose Origin is
+// chrome-extension:// or moz-extension:// with a 403. For hosts on this machine
+// or LAN, rewrite our own requests' Origin to the server's own origin, which
+// they always accept. Only affects requests made by this extension.
+const LOCAL_HOST_RE =
+  /^(localhost|127(\.\d+){3}|0\.0\.0\.0|\[::1\]|10(\.\d+){3}|192\.168(\.\d+){2}|172\.(1[6-9]|2\d|3[01])(\.\d+){2}|[^.]+\.local)$/i;
+const ORIGIN_RULE_ID = 1;
+let originRuleFor = null;
+
+async function allowLocalServer(baseUrl) {
+  let url;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return;
+  }
+  if (!LOCAL_HOST_RE.test(url.hostname) || originRuleFor === url.origin || !api.declarativeNetRequest) return;
+  try {
+    await api.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [ORIGIN_RULE_ID],
+      addRules: [
+        {
+          id: ORIGIN_RULE_ID,
+          priority: 1,
+          action: {
+            type: "modifyHeaders",
+            requestHeaders: [{ header: "origin", operation: "set", value: url.origin }],
+          },
+          condition: {
+            urlFilter: `|${url.origin}/`,
+            resourceTypes: ["xmlhttprequest"],
+            tabIds: [-1], // requests not made from a tab, i.e. by the extension itself
+          },
+        },
+      ],
+    });
+    originRuleFor = url.origin;
+  } catch (e) {
+    console.warn("Honest LinkedIn: could not set the Origin rule for", url.origin, e);
+  }
+}
+
 async function handleHonestify({ text, skipCache }) {
   const settings = await loadSettings(api.storage);
   const cfg = resolveProvider(settings);
+  await allowLocalServer(cfg.baseUrl);
   const key = await sha256(
     [PROMPT_VERSION, cfg.format, cfg.baseUrl, cfg.model, settings.brainstorm, settings.extraInstructions, text].join(
       "\u0000",
@@ -64,7 +107,9 @@ api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       work = handleHonestify(msg);
       break;
     case "listModels":
-      work = listModels(msg.cfg).then((models) => ({ models }));
+      work = allowLocalServer(msg.cfg?.baseUrl)
+        .then(() => listModels(msg.cfg))
+        .then((models) => ({ models }));
       break;
     case "clearCache":
       work = api.storage.local.remove(CACHE_KEY).then(() => ({ ok: true }));

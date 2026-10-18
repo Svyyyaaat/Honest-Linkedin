@@ -69,7 +69,7 @@ Choosing a provider from the dropdown fills in its endpoint, API format and a fe
 
 Keys are stored per provider in `storage.local`. They never sync and are only sent to the endpoint they belong to. When you save, the extension asks for permission to reach that endpoint's host and nothing else.
 
-**Ollama:** recent versions accept requests from browser extensions as-is. If you get a 403, start Ollama with `OLLAMA_ORIGINS="chrome-extension://*,moz-extension://*"`.
+**Ollama / LM Studio:** these servers often reject requests coming from a browser extension with a 403. For servers on your machine or local network, the extension rewrites the `Origin` header on its own requests so the server accepts them. If you still get a 403, start Ollama with `OLLAMA_ORIGINS="chrome-extension://*,moz-extension://*"`.
 
 ## The prompt
 
@@ -109,7 +109,7 @@ src/options.*, popup.*   settings page and toolbar popup
 icons/icon.svg           icon source (icon-small.svg is the simplified 16px version); PNGs are rendered from these
 ```
 
-**When LinkedIn changes its markup** (it will): every selector is at the top of `src/content.js` (`POST_SELECTORS`, `TEXT_SELECTORS`, `EXCLUDE_ANCESTORS`). If none of them match, it falls back to the longest text block in the post that isn't a comment.
+**When LinkedIn changes its markup** (it will): known selectors are at the top of `src/content.js`. If none match, as in LinkedIn's newer feed with its generated class names, a structural check takes over. A post is any card with a long block of text, a link to a profile or company, and a row of at least 6 buttons. The text that gets translated is the longest block in that card that isn't a link, a button or a comment.
 
 ## Development
 

@@ -48,6 +48,14 @@ async function fetchJSON(url, init) {
       data?.message ||
       text.slice(0, 300) ||
       res.statusText;
+    if (res.status === 403 && /^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(url)) {
+      throw new LLMError(
+        "403 from your local server: it refused requests from the browser. " +
+          'Restart it with OLLAMA_ORIGINS="chrome-extension://*,moz-extension://*" (Ollama) ' +
+          "or enable CORS in its settings (LM Studio).",
+        403,
+      );
+    }
     throw new LLMError(`${res.status}: ${msg}`, res.status);
   }
   return data;

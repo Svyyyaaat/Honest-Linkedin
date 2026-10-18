@@ -14,6 +14,12 @@ function createMock() {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", async () => {
+      // Like Ollama: refuse browser-extension origins with a bare 403.
+      const origin = req.headers.origin || "";
+      if (/^(chrome|moz)-extension:/.test(origin)) {
+        log.push({ method: req.method, url: req.url, headers: req.headers, rejected: true });
+        return res.writeHead(403, cors).end("Forbidden");
+      }
       if (opts.delay && req.method === "POST") await new Promise((r) => setTimeout(r, opts.delay));
       const json = body ? JSON.parse(body) : null;
       log.push({ method: req.method, url: req.url, headers: req.headers, body: json });

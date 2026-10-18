@@ -3,13 +3,16 @@
 
   const api = globalThis.browser ?? globalThis.chrome;
 
-  // LinkedIn changes its markup often. All DOM knowledge lives here.
+  // LinkedIn changes its markup often (and its newer feed uses generated class
+  // names), so known selectors are tried first and a structural heuristic
+  // catches everything else. All DOM knowledge lives here.
   const POST_SELECTORS = [
     "div.feed-shared-update-v2",
     "div[data-urn^='urn:li:activity']",
     "div[data-id^='urn:li:activity']",
     "article[data-activity-urn]",
     "div.occludable-update",
+    "[data-view-name='feed-full-update']",
   ];
   const TEXT_SELECTORS = [
     ".update-components-text",
@@ -18,12 +21,24 @@
     ".feed-shared-text",
     "[data-test-id='main-feed-activity-card__commentary']",
     ".attributed-text-segment-list__content",
+    "[data-testid='expandable-text-box']",
+    "[data-view-name='feed-commentary']",
   ];
   // Text inside these belongs to comments, not to the post.
   const EXCLUDE_ANCESTORS =
-    "[class*='comments-comment'], .comments-comments-list, [class*='comment-item'], .hl-bar, .hl-honest";
+    "[class*='comments-comment'], .comments-comments-list, [class*='comment-item'], " +
+    "[data-view-name*='comment'], .hl-bar, .hl-honest";
+  // Every post has a link to its author.
+  const PROFILE_LINK = "a[href*='/in/'], a[href*='/company/'], a[href*='/school/'], a[href*='/showcase/']";
+  // A post card has an action row (like, comment, repost, send) plus menus;
+  // a comment has fewer buttons, which keeps comments from passing as posts.
+  const MIN_POST_BUTTONS = 6;
+  const INLINE_TAGS = new Set(
+    "SPAN A STRONG B EM I U S BR WBR SMALL MARK CODE SUB SUP ABBR TIME LABEL IMG".split(" "),
+  );
 
   const MIN_TEXT_LENGTH = 20;
+  const MIN_DISCOVERY_LENGTH = 60; // text needed for the heuristic to treat something as a post
   const AUTO_DWELL_MS = 900; // post must stay on screen this long before auto mode spends tokens
   const MAX_CONCURRENT = 2;
 
@@ -32,16 +47,81 @@
 
   // ---------------------------------------------------------------- DOM utils
 
+  const textLen = (el) => (el.textContent || "").trim().length;
+
   function findPosts(root) {
     const found = new Set();
     for (const sel of POST_SELECTORS) {
       root.querySelectorAll(sel).forEach((el) => found.add(el));
     }
+    root.querySelectorAll(`[${POST_MARK}]`).forEach((el) => found.add(el)); // found earlier by the heuristic
+    found.forEach((el) => el.setAttribute(POST_MARK, ""));
+    for (const el of discoverPosts(root)) found.add(el);
     // Keep only the outermost match so a post isn't handled twice.
     return [...found].filter((el) => {
-      const parent = el.parentElement?.closest(POST_SELECTORS.join(","));
-      return !parent || !found.has(parent);
+      for (let a = el.parentElement; a; a = a.parentElement) if (found.has(a)) return false;
+      return true;
     });
+  }
+
+  // Paragraph-level block holding a text node: its closest non-inline ancestor.
+  function blockOf(el) {
+    while (el && INLINE_TAGS.has(el.tagName)) el = el.parentElement;
+    return el;
+  }
+
+  // Grow a text block to the wrapper that holds just the post text (all its
+  // paragraphs and the "…more" toggle), stopping before headers or media.
+  function hoistText(el, stopAt) {
+    let cur = el;
+    for (let p = cur.parentElement; p && p !== stopAt; p = p.parentElement) {
+      if (textLen(p) > textLen(cur) + 40 || p.querySelector("img, video") || p.querySelectorAll("button").length > 2) {
+        break;
+      }
+      cur = p;
+    }
+    return cur;
+  }
+
+  // Structural fallback: long text whose surroundings look like a post card.
+  // Found posts are marked so later scans skip them in O(depth); text blocks
+  // that aren't in a post are remembered for a while (buttons load lazily, so
+  // not forever).
+  const POST_MARK = "data-hl-post";
+  let notPosts = new WeakSet();
+  setInterval(() => (notPosts = new WeakSet()), 5000);
+
+  function discoverPosts(root) {
+    const scope = root.querySelector?.("main") || root.body || root;
+    const blocks = new Set();
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.nodeValue.trim().length >= 20 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
+    });
+    for (let n; (n = walker.nextNode()); ) {
+      const block = blockOf(n.parentElement);
+      if (block && !blocks.has(block)) blocks.add(block);
+    }
+    const posts = new Set();
+    for (const block of blocks) {
+      if (notPosts.has(block) || block.closest(`[${POST_MARK}], .hl-bar, .hl-honest, header, nav, aside, [role='dialog']`)) {
+        continue;
+      }
+      if (textLen(hoistText(block)) < MIN_DISCOVERY_LENGTH) continue;
+      let post = null;
+      for (let a = block.parentElement, depth = 0; a && a !== scope && depth < 30; a = a.parentElement, depth++) {
+        if (a.querySelector(PROFILE_LINK) && a.querySelectorAll("button").length >= MIN_POST_BUTTONS) {
+          post = a;
+          break;
+        }
+      }
+      if (post) {
+        post.setAttribute(POST_MARK, "");
+        posts.add(post);
+      } else {
+        notPosts.add(block);
+      }
+    }
+    return posts;
   }
 
   function findTextEl(post) {
@@ -55,11 +135,19 @@
         }
       }
     }
-    // Fallback: the longest left-to-right text block that isn't in comments.
+    // Fallback: the longest text block that isn't a comment, a link (the
+    // author's name and headline are links) or a button.
     let best = null;
-    let bestLen = 80;
-    for (const el of post.querySelectorAll("[dir='ltr'], [dir='auto']")) {
-      if (el.closest(EXCLUDE_ANCESTORS)) continue;
+    let bestLen = MIN_TEXT_LENGTH - 1;
+    const walker = document.createTreeWalker(post, NodeFilter.SHOW_TEXT);
+    const seen = new Set();
+    for (let n; (n = walker.nextNode()); ) {
+      const block = blockOf(n.parentElement);
+      if (!block || seen.has(block) || block === post) continue;
+      seen.add(block);
+      // Mention links inside the text are fine; a block that is itself inside a link is not.
+      if (block.closest(EXCLUDE_ANCESTORS) || block.closest("a, button")) continue;
+      const el = hoistText(block, post);
       const len = readText(el).length;
       if (len > bestLen) {
         best = el;
@@ -357,8 +445,10 @@
       st.bar?.remove();
       st.honestEl?.remove();
       st.textEl?.classList.remove("hl-hidden", "hl-translating");
+
     }
     states.clear();
+    document.querySelectorAll(`[${POST_MARK}]`).forEach((el) => el.removeAttribute(POST_MARK));
   }
 
   let scanScheduled = false;
