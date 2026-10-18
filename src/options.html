@@ -84,7 +84,18 @@
       </section>
 
       <section class="card">
-        <h2>Extra instructions <span class="muted">(optional)</span></h2>
+        <h2>Humor</h2>
+        <label class="check">
+          <input type="checkbox" id="brainstorm" />
+          <span>
+            Brainstorm before answering
+            <span class="hint" style="display: block">
+              The model drafts three versions and shows only the funniest. Noticeably funnier, especially on small
+              models like Haiku. About 3× the output tokens per post.
+            </span>
+          </span>
+        </label>
+        <label for="extraInstructions">Extra instructions <span class="muted">(optional)</span></label>
         <textarea
           id="extraInstructions"
           rows="2"

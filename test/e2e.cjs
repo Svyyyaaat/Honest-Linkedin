@@ -93,6 +93,7 @@ async function waitFor(fn, what, timeout = 8000) {
     const sent = log.find((l) => l.method === "POST").body.messages[1].content;
     assert.ok(!sent.includes("…more"), "'see more' toggle text not sent to the model");
     assert.ok(!sent.includes("Congrats Jane"), "comments not sent to the model");
+    assert.ok(log.find((l) => l.method === "POST").body.messages[0].content.includes("<final>"), "brainstorm on by default");
 
     await post1.locator(".hl-btn").click();
     assert.equal(await post1.locator(".hl-btn").textContent(), "Honestify");

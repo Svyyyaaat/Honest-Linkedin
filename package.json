@@ -4,7 +4,7 @@
   "private": true,
   "description": "Browser extension that translates LinkedIn posts into what they actually mean.",
   "scripts": {
-    "test": "node test/e2e.cjs",
+    "test": "node test/prompt.test.mjs && node test/e2e.cjs",
     "lint": "web-ext lint",
     "build": "web-ext build --overwrite-dest",
     "firefox": "web-ext run --start-url https://www.linkedin.com/feed/"
@@ -12,5 +12,6 @@
   "devDependencies": {
     "playwright": "^1.56.1",
     "web-ext": "^8.0.0"
-  }
+  },
+  "type": "module"
 }

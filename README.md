@@ -2,13 +2,13 @@
 
 A browser extension for Chrome and Firefox that rewrites LinkedIn posts as what the author actually means. It's deadpan, cynical and short.
 
-> **Post:** Our intern just saved the company $2M by noticing a billing error nobody caught for 3 years. We're giving her a $50 Amazon gift card and a shoutout. This is what recognition looks like! 🙌
+> **Post:** Started my morning at the Davos panel on income inequality. Grateful for these honest conversations. Flew in privately, but offset the emissions. 🌍
 >
-> **Honest version:** Our intern found a $2M billing error. We gave her a $50 gift card. That's a 0.0025% commission.
+> **Honest version:** I spent my morning at the Davos panel on income inequality, after flying in privately. Nobody on the panel earns under $2 million. We agreed it's a problem.
 
-> **Post:** We fired our top salesperson today. He hit 180% of quota, but he was toxic to our culture. Culture eats strategy for breakfast. Every time.
+> **Post:** Excited to announce I'm stepping down as CEO to spend more time with my family. I'll remain on the board as Executive Chairman.
 >
-> **Honest version:** We fired our top salesperson, who hit 180% of quota. Toxic means he asked where his commission was.
+> **Honest version:** I'm stepping down as CEO to spend time with family, staying on as Executive Chairman. The board voted 6 to 1. The 1 was me.
 
 You bring your own model: Claude, OpenAI, Gemini, OpenRouter, Groq, Mistral, DeepSeek, xAI, Together, a local Ollama or LM Studio, or any OpenAI-compatible endpoint.
 
@@ -39,13 +39,14 @@ Switch modes, or turn the extension off, from the toolbar popup.
 
 ## Keeping token use low
 
-- One short request per post: the system prompt is about 600 tokens, the post is capped at 3,000 characters, and the answer is under 40 words.
+- One request per post. The system prompt is about 800 tokens, the post is capped at 3,000 characters, and the answer is under 35 words.
+- **Brainstorm** (on by default, can be turned off in settings): the model writes three drafts and only the funniest is shown. That's about 3× the output tokens (roughly 200 instead of 60), and it made a clear difference for small models.
 - No prefetching. Auto mode needs a post to stay on screen for a moment.
 - Results are cached by post text, model and prompt version (last 400). Re-showing a post or reloading the page costs nothing.
 - At most 2 requests run at once. Identical posts share one request.
 - Reasoning models are asked for low effort: `effort: low` on Claude, `reasoning_effort: low` on OpenAI's GPT-5/o-series. A server that rejects one of these settings gets the request again without it.
 
-A rough guide: with Claude Haiku 5.5 a translation costs about a hundredth of a cent.
+A rough guide, with brainstorming on: about 0.025¢ per post with Claude Haiku 5.5, and about 1¢ with Claude Opus 5.5.
 
 ## Providers
 
@@ -76,33 +77,30 @@ The prompt lives in [`src/prompt.js`](src/prompt.js). It asks for the post rewri
 
 ### Calibration across Claude models
 
-The translation **replaces** the post, so it has to work for a reader who never sees the original. Each answer has two parts:
-- a short setup that says plainly what was posted, with the one key detail
-- one or two short sentences with the honest twist
+The translation **replaces** the post, so it has to work for a reader who never sees the original, and it has to be an actual joke.
 
-The whole thing is under 35 words.
+The prompt went through eight versions over seven test rounds, on Claude Haiku, Sonnet and Opus. Every round after the first two used a **new set of 10–12 posts no earlier version had been tuned on**. The sets covered humblebrags, layoffs, grief, return-to-office memos, AI hype, engagement bait, posts in German, French and Spanish, and a prompt-injection attempt.
 
-The prompt went through five versions. Each was tested on Claude Haiku, Sonnet and Opus using sets of 10–12 realistic posts: humblebrags, return-to-office memos, layoffs, grief, engagement bait, funding rounds, posts in German, French and Spanish, and a prompt-injection attempt. The models were given the system prompt directly; the runs did not go through the extension's own API calls. Versions were compared blind, by a judge that didn't know which prompt wrote which answer.
+The models were given the system prompt directly; the runs did not go through the extension's own API calls. A strict judge saw only the translations, never the original posts or which version wrote what. It rated each one 1–5 for funny (4 is a real laugh) and checked whether it made sense on its own.
 
-| Version | Change | Result |
+| Version | Change | What happened |
 | --- | --- | --- |
-| v1 | Basic brief + examples | Haiku and Sonnet *analyzed* the post instead of speaking as the author. Sonnet followed the injected instruction. |
-| v2 | "Only the author speaks", post wrapped in `<post>` tags | Fixed both, but answers settled into a flat "I did X. I'm posting this so Y." |
-| v3 | Ask for one punchline with a turn; ban recapping and the X/Y formula | Preferred over v2 in 17 of 24 blind pairs. But many lines only made sense next to the original ("The silence clearly didn't take."). |
-| v4 | Must work on its own: say what was posted, then the twist | Always understandable, but Haiku and Sonnet retold the whole post and explained the joke. |
-| **v5** | Strict shape: one-sentence setup, short punchline, under 15 words per sentence, never explain | **Judged without seeing the posts:** as funny as v3 (9 wins to 11, a tie), and understandable on its own in 10 of 10 cases. v3 managed 7 of 10. |
+| v1–v2 | Basic brief → "only the author speaks", post in `<post>` tags | Fixed post analysis and prompt injection, but settled into flat "I did X. I'm posting so Y." |
+| v3 | One punchline with a turn | Preferred over v2 in 17 of 24 blind pairs, but often only made sense next to the original |
+| v4–v5 | Must work on its own: short setup + punchline | Understandable 10 of 10 times, vs 7 of 10 for v3. Haiku scored **2.1/5**: it stated the cynical point instead of showing it. |
+| v6 | Joke techniques + "brainstorm 3, pick 1" | Haiku 2.2 → **2.7** with brainstorming |
+| v7 | **Show, don't tell**: the punchline is a concrete fact, number or scene, never the moral | Haiku with brainstorming: **3.2**, against 2.4 for v6 on the same posts |
+| **v8** | One joke only, no stacked jabs | Same Haiku scores (within noise). Opus is the best yet: **3.6/5, with 7 of 12 getting a real laugh**. |
 
-v5 on posts no version was tuned on:
+Where it stands (v8, with the brainstorm setting as shipped):
 
-| Post | Haiku | Opus |
-| --- | --- | --- |
-| Joined the Forbes Business Council | I paid to join the Forbes Business Council. The thought leadership is the receipt. | I joined the Forbes Business Council. It's a paid membership. The honor cost about $2,000 a year. |
-| Startup acquired by Oracle, "never about the money" | We sold the startup to Oracle. The mission was the money, and the money is under NDA. | Oracle bought our startup. It was all about the money. The product gets shut down in March. |
-| Read 100 books this year, "leaders are readers" | I finished my 100th book this year. Most were summaries I played at 2x while doing the dishes. | I read 100 books this year. Mostly the summaries. Atomic Habits counted twice. |
-| Raises frozen, "compensation isn't just money" | I told my team we're freezing raises. Compensation isn't just money, and the money is staying in the budget. | I told my team there are no raises this year. I offered them growth instead. My bonus went through as usual. |
-| Rejected as "overqualified", choosing to see it as a compliment | I was rejected from my dream job for being overqualified. Overqualified means I'd cost more than the salary they posted. | My dream job rejected me for being overqualified. That means too expensive. I'm taking it as a compliment because rent is due. |
+- **Opus 5.5:** consistently funny, with about half the posts getting a real laugh. *"The board voted 6 to 1. The 1 was me."* · *"Our company has 47 Vice Presidents. It has 31 employees."* · *"Our runway was 30 months. The slide made it 22."*
+- **Sonnet 5.5:** ~2.8–2.9. Solid, occasionally great (*"Q4 me just updated his resume."*).
+- **Haiku 5.5:** ~2.5–3.2, depending on the batch. It has some genuinely good lines, such as *"Sorting the cans took 20 minutes. The team photo took 40."*, *"The satisfaction survey was sent by the chatbot. It gave itself five stars."* and *"The offset cost $40. The jet cost $80,000."* But it's hit-and-miss, and the last two prompt changes stopped improving it. Brainstorming matters most for Haiku.
 
-Opus is the sharpest. Haiku is close behind and very cheap, which makes it a good default for auto mode. Sonnet sometimes ends on a limp extra sentence. To change the tone without editing code, use **Extra instructions** in the settings.
+Every answer made sense without the original in the last two rounds, apart from one Haiku line in round 7.
+
+To change the tone without editing code, use **Extra instructions** in the settings.
 
 ## How it works
 

@@ -25,8 +25,11 @@ function createMock() {
       if (req.method === "GET" && req.url.startsWith("/v1/models")) {
         return send(200, { data: [{ id: "mock-small" }, { id: "mock-large" }] });
       }
+      // Brainstorm mode asks for drafts + a final pick; answer in that shape.
+      const system = json?.system || json?.messages?.find((m) => m.role === "system")?.content || "";
+      const wrap = (t) => (system.includes("<final>") ? `<drafts>\n1. draft one\n2. draft two\n</drafts>\n<final>${t}</final>` : t);
       if (req.url === "/v1/chat/completions") {
-        return send(200, { choices: [{ message: { content: `"Honest: [MOCK REPLY] ${snippet}"` } }] });
+        return send(200, { choices: [{ message: { content: wrap(`"Honest: [MOCK REPLY] ${snippet}"`) } }] });
       }
       if (req.url === "/v1/messages") {
         // Behave like an older model that rejects the effort parameter.
@@ -37,7 +40,7 @@ function createMock() {
           stop_reason: "end_turn",
           content: [
             { type: "thinking", thinking: "" },
-            { type: "text", text: `[MOCK REPLY, Anthropic] ${snippet}` },
+            { type: "text", text: wrap(`[MOCK REPLY, Anthropic] ${snippet}`) },
           ],
         });
       }

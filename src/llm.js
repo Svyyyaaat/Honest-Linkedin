@@ -1,4 +1,4 @@
-import { SYSTEM_PROMPT, buildUserMessage, cleanOutput } from "./prompt.js";
+import { buildSystemPrompt, buildUserMessage, cleanOutput } from "./prompt.js";
 
 const REQUEST_TIMEOUT_MS = 60000;
 
@@ -114,7 +114,7 @@ async function callOpenAI(cfg, system, user) {
     optional.reasoning_effort = "low";
     optional.max_completion_tokens = 2000;
   } else {
-    optional.max_tokens = 400;
+    optional.max_tokens = 700;
   }
   const data = await postWithFallback(
     `${cfg.baseUrl}/chat/completions`,
@@ -133,15 +133,14 @@ async function callOpenAI(cfg, system, user) {
   return content || "";
 }
 
-export async function honestify(cfg, postText, extraInstructions) {
+export async function honestify(cfg, postText, { extraInstructions, brainstorm } = {}) {
   if (!cfg.baseUrl) throw new LLMError("No API endpoint set. Open the settings.");
   if (!cfg.model) throw new LLMError("No model selected. Open the settings.");
   if (cfg.needsKey && !cfg.apiKey) throw new LLMError("No API key set. Open the settings.");
+  const system = buildSystemPrompt(brainstorm);
   const user = buildUserMessage(postText, extraInstructions);
   const raw =
-    cfg.format === "anthropic"
-      ? await callAnthropic(cfg, SYSTEM_PROMPT, user)
-      : await callOpenAI(cfg, SYSTEM_PROMPT, user);
+    cfg.format === "anthropic" ? await callAnthropic(cfg, system, user) : await callOpenAI(cfg, system, user);
   const out = cleanOutput(raw);
   if (!out) throw new LLMError("The model returned nothing. Maybe it was speechless.");
   return out;

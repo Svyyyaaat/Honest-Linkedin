@@ -37,14 +37,16 @@ async function handleHonestify({ text, skipCache }) {
   const settings = await loadSettings(api.storage);
   const cfg = resolveProvider(settings);
   const key = await sha256(
-    [PROMPT_VERSION, cfg.format, cfg.baseUrl, cfg.model, settings.extraInstructions, text].join("\u0000"),
+    [PROMPT_VERSION, cfg.format, cfg.baseUrl, cfg.model, settings.brainstorm, settings.extraInstructions, text].join(
+      "\u0000",
+    ),
   );
   if (!skipCache) {
     const hit = await cacheGet(key);
     if (hit) return { text: hit, cached: true };
   }
   if (!inflight.has(key)) {
-    const p = honestify(cfg, text, settings.extraInstructions)
+    const p = honestify(cfg, text, settings)
       .then(async (out) => {
         await cachePut(key, out);
         return out;

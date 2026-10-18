@@ -35,11 +35,12 @@ function fillModelSelect(id, selected, fetched) {
   sel.value = selected || names[0] || CUSTOM;
   if (!names.length) sel.value = CUSTOM;
   onModelChange();
-  $("model-hint").textContent = fetched?.length
-    ? `${fetched.length} models fetched from the API.`
-    : preset.models.length
-      ? "Suggested models. Use “Fetch models” to load the full list from the API."
-      : "Use “Fetch models” to list what the server has.";
+  $("model-hint").textContent =
+    (fetched?.length
+      ? `${fetched.length} models fetched from the API.`
+      : preset.models.length
+        ? "Suggested models. Use “Fetch models” to load the full list from the API."
+        : "Use “Fetch models” to list what the server has.") + (preset.modelHint ? ` ${preset.modelHint}` : "");
 }
 
 function onModelChange() {
@@ -112,6 +113,7 @@ async function save() {
     mode: document.querySelector("input[name=mode]:checked")?.value || "button",
     activeProvider: form.id,
     extraInstructions: $("extraInstructions").value.trim(),
+    brainstorm: $("brainstorm").checked,
     providers: {
       ...settings.providers,
       [form.id]: {
@@ -209,6 +211,7 @@ settings = await loadSettings(api.storage);
 $("enabled").checked = settings.enabled;
 for (const r of document.querySelectorAll("input[name=mode]")) r.checked = r.value === settings.mode;
 $("extraInstructions").value = settings.extraInstructions || "";
+$("brainstorm").checked = settings.brainstorm;
 $("sample").value = SAMPLE_POST;
 loadProviderIntoForm(settings.activeProvider);
 
