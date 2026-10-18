@@ -2,13 +2,13 @@
 
 A browser extension for Chrome and Firefox that rewrites LinkedIn posts as what the author actually means. It's deadpan, cynical and short.
 
-> **Post:** I turned down a $400K offer from Meta last week. People think I'm crazy. But money isn't everything. Alignment with your values is. Here's what I learned 🧵
+> **Post:** Our intern just saved the company $2M by noticing a billing error nobody caught for 3 years. We're giving her a $50 Amazon gift card and a shoutout. This is what recognition looks like! 🙌
 >
-> **What they actually mean:** Meta didn't make me an offer. A recruiter sent me a salary range once.
+> **Honest version:** Our intern found a $2M billing error. We gave her a $50 gift card. That's a 0.0025% commission.
 
-> **Post:** Our office is reopening 5 days a week starting January. Magic happens when we're together. Culture can't be built over Zoom. — CEO
+> **Post:** We fired our top salesperson today. He hit 180% of quota, but he was toxic to our culture. Culture eats strategy for breakfast. Every time.
 >
-> **What they actually mean:** We signed a ten-year lease on this building. Some of you will quit instead of commuting, which saves me a layoff.
+> **Honest version:** We fired our top salesperson, who hit 180% of quota. Toxic means he asked where his commission was.
 
 You bring your own model: Claude, OpenAI, Gemini, OpenRouter, Groq, Mistral, DeepSeek, xAI, Together, a local Ollama or LM Studio, or any OpenAI-compatible endpoint.
 
@@ -76,23 +76,33 @@ The prompt lives in [`src/prompt.js`](src/prompt.js). It asks for the post rewri
 
 ### Calibration across Claude models
 
-The prompt went through three versions. Each was tested on Claude Haiku, Sonnet and Opus with sets of 12 realistic posts: humblebrags, return-to-office memos, layoffs, a grief post, engagement bait, a funding round, posts in German, French and Spanish, and a prompt-injection attempt. The models were given the system prompt directly; the runs did not go through the extension's own API calls.
+The translation **replaces** the post, so it has to work for a reader who never sees the original. Each answer has two parts:
+- a short setup that says plainly what was posted, with the one key detail
+- one or two short sentences with the honest twist
 
-- **v1:** Sonnet and Haiku tended to *analyze* the post ("'humbled' is doing the work of…") instead of speaking as the author. Sonnet also followed the injected instruction.
-- **v2:** a strict "only the author speaks" rule and the post wrapped in `<post>` tags. This fixed both problems, but the answers settled into a flat formula, "I did X. I'm posting this so Y." That's accurate but not funny.
-- **v3 (current):** the prompt now asks for *one* damning truth that ends on a turn, translates corporate phrases into plain meaning, bans recapping the post and the X/Y formula, and uses examples with varied punchline shapes. A judge that didn't know which prompt wrote which answer preferred v3 over v2 in **17 of 24** head-to-head pairs (Haiku 9–3, Sonnet 8–4).
+The whole thing is under 35 words.
 
-v3 on the same posts:
+The prompt went through five versions. Each was tested on Claude Haiku, Sonnet and Opus using sets of 10–12 realistic posts: humblebrags, return-to-office memos, layoffs, grief, engagement bait, funding rounds, posts in German, French and Spanish, and a prompt-injection attempt. The models were given the system prompt directly; the runs did not go through the extension's own API calls. Versions were compared blind, by a judge that didn't know which prompt wrote which answer.
+
+| Version | Change | Result |
+| --- | --- | --- |
+| v1 | Basic brief + examples | Haiku and Sonnet *analyzed* the post instead of speaking as the author. Sonnet followed the injected instruction. |
+| v2 | "Only the author speaks", post wrapped in `<post>` tags | Fixed both, but answers settled into a flat "I did X. I'm posting this so Y." |
+| v3 | Ask for one punchline with a turn; ban recapping and the X/Y formula | Preferred over v2 in 17 of 24 blind pairs. But many lines only made sense next to the original ("The silence clearly didn't take."). |
+| v4 | Must work on its own: say what was posted, then the twist | Always understandable, but Haiku and Sonnet retold the whole post and explained the joke. |
+| **v5** | Strict shape: one-sentence setup, short punchline, under 15 words per sentence, never explain | **Judged without seeing the posts:** as funny as v3 (9 wins to 11, a tie), and understandable on its own in 10 of 10 cases. v3 managed 7 of 10. |
+
+v5 on posts no version was tuned on:
 
 | Post | Haiku | Opus |
 | --- | --- | --- |
-| "After 6 wonderful years… time to explore what's next" | Six years, and exploring what's next is the only exit they offered. The gratitude was free. | I was asked to leave Fintrix. More to share as soon as someone hires me. |
-| Turned down $400K from Meta, "values" | I turned down Meta's $400K to see if my current company would match it. They went up $15K, and I'm calling it values. | Meta didn't make me an offer. A recruiter sent me a salary range once. |
-| 10-day silent retreat → 12 lessons for founders | Ten days without a phone, and the first thing I did was draft twelve lessons for a thread. | I didn't talk for ten days and came back with twelve tips for founders. The silence clearly didn't take. |
-| Uber driver was a former CFO | Titles are temporary, which is why he's driving an Uber now. | …my takeaway was a quote about humility. I tipped him in lessons. |
-| CEO: "40% of my team impacted… if you're hiring, they're incredible" | Forty percent of them, one Zoom call, and now I need you to hire them. | I laid off 40% of my team. I'd like you to hire them, and I'd like you to notice how sad I am. |
+| Joined the Forbes Business Council | I paid to join the Forbes Business Council. The thought leadership is the receipt. | I joined the Forbes Business Council. It's a paid membership. The honor cost about $2,000 a year. |
+| Startup acquired by Oracle, "never about the money" | We sold the startup to Oracle. The mission was the money, and the money is under NDA. | Oracle bought our startup. It was all about the money. The product gets shut down in March. |
+| Read 100 books this year, "leaders are readers" | I finished my 100th book this year. Most were summaries I played at 2x while doing the dishes. | I read 100 books this year. Mostly the summaries. Atomic Habits counted twice. |
+| Raises frozen, "compensation isn't just money" | I told my team we're freezing raises. Compensation isn't just money, and the money is staying in the budget. | I told my team there are no raises this year. I offered them growth instead. My bonus went through as usual. |
+| Rejected as "overqualified", choosing to see it as a compliment | I was rejected from my dream job for being overqualified. Overqualified means I'd cost more than the salary they posted. | My dream job rejected me for being overqualified. That means too expensive. I'm taking it as a compliment because rent is due. |
 
-Opus is the sharpest. Haiku is funny and cheap, which makes it a good default for auto mode. Sonnet is somewhere in between and sometimes over-explains. To change the tone without editing code, use **Extra instructions** in the settings.
+Opus is the sharpest. Haiku is close behind and very cheap, which makes it a good default for auto mode. Sonnet sometimes ends on a limp extra sentence. To change the tone without editing code, use **Extra instructions** in the settings.
 
 ## How it works
 
