@@ -46,7 +46,7 @@ Switch modes, or turn the extension off, from the toolbar popup.
 - At most 2 requests run at once. Identical posts share one request.
 - Reasoning models are asked for low effort: `effort: low` on Claude, `reasoning_effort: low` on OpenAI's GPT-5/o-series. A server that rejects one of these settings gets the request again without it.
 
-A rough guide: about 0.01¢ per post with Claude Haiku 5.5, and about 0.5¢ with Claude Opus 5.5.
+A rough guide: about 0.02¢ per post with Claude Haiku 5.5 (roughly 1,000 tokens in, 60–200 out), and about 0.5¢ with Claude Opus 5.5. A heavy user scrolling in auto mode spends well under $1 a month on Haiku.
 
 ## Providers
 
