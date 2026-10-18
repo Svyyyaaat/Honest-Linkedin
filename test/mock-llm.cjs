@@ -3,6 +3,7 @@ const http = require("http");
 
 function createMock() {
   const log = [];
+  const opts = { delay: 0 };
   const server = http.createServer((req, res) => {
     const cors = {
       "access-control-allow-origin": "*",
@@ -12,7 +13,8 @@ function createMock() {
     if (req.method === "OPTIONS") return res.writeHead(204, cors).end();
     let body = "";
     req.on("data", (c) => (body += c));
-    req.on("end", () => {
+    req.on("end", async () => {
+      if (opts.delay && req.method === "POST") await new Promise((r) => setTimeout(r, opts.delay));
       const json = body ? JSON.parse(body) : null;
       log.push({ method: req.method, url: req.url, headers: req.headers, body: json });
       const send = (status, obj) =>
@@ -42,7 +44,7 @@ function createMock() {
       send(404, { error: { message: "not found" } });
     });
   });
-  return { server, log };
+  return { server, log, opts };
 }
 
 module.exports = { createMock };

@@ -188,7 +188,23 @@
       label.textContent = "What they actually mean";
       const body = document.createElement("div");
       body.className = "hl-text";
-      body.textContent = st.honest;
+      // One span per word so the reveal animation can stagger them.
+      const parts = st.honest.split(/(\s+)/);
+      const words = parts.filter((p) => p && !/^\s+$/.test(p)).length;
+      const step = Math.min(30, 900 / Math.max(words, 1));
+      let i = 0;
+      for (const part of parts) {
+        if (!part) continue;
+        if (/^\s+$/.test(part)) {
+          body.append(part);
+        } else {
+          const w = document.createElement("span");
+          w.className = "hl-w";
+          w.style.animationDelay = `${Math.round(120 + i++ * step)}ms`;
+          w.textContent = part;
+          body.append(w);
+        }
+      }
       honestEl.append(label, body);
       honestEl.classList.remove("hl-error");
     } else if (st.view === "error") {
@@ -204,18 +220,64 @@
       });
       honestEl.append(msg, link);
     }
-    if (textEl) textEl.classList.toggle("hl-hidden", st.view === "honest");
+    if (textEl) {
+      textEl.classList.toggle("hl-hidden", st.view === "honest");
+      // Shimmer over the original lines while waiting, Telegram-style. The
+      // gradient is built from the text's own colour so it suits both themes.
+      if (st.view === "loading" && !textEl.classList.contains("hl-translating")) {
+        const m = getComputedStyle(textEl).color.match(/[\d.]+/g) || [0, 0, 0];
+        textEl.style.setProperty("--hl-ink", `rgba(${m[0]}, ${m[1]}, ${m[2]}, 0.38)`);
+      }
+      textEl.classList.toggle("hl-translating", st.view === "loading");
+    }
+  }
+
+  // ------------------------------------------------------------- animation
+
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+
+  // Smoothly resize `el` from the height the previous view had.
+  function growFrom(el, fromHeight, duration = 380) {
+    if (reducedMotion.matches || !el?.isConnected || !fromHeight) return;
+    const to = el.getBoundingClientRect().height;
+    if (Math.abs(to - fromHeight) < 2) return;
+    const overflow = el.style.overflow;
+    el.style.overflow = "hidden";
+    el.animate([{ height: `${fromHeight}px` }, { height: `${to}px` }], { duration, easing: EASE }).finished.finally(
+      () => (el.style.overflow = overflow),
+    );
+  }
+
+  // Swap views with the height morph + staggered word reveal.
+  function transition(post, nextView) {
+    const st = getState(post);
+    const from =
+      st.view === "honest" ? st.honestEl?.getBoundingClientRect().height : st.textEl?.getBoundingClientRect().height;
+    st.view = nextView;
+    render(post);
+    if (nextView === "honest") {
+      if (!reducedMotion.matches) {
+        st.honestEl.classList.add("hl-animate");
+        clearTimeout(st.animTimer);
+        st.animTimer = setTimeout(() => st.honestEl.classList.remove("hl-animate"), 1600);
+      }
+      growFrom(st.honestEl, from);
+    } else if (nextView === "original" && st.textEl) {
+      growFrom(st.textEl, from, 320);
+      if (!reducedMotion.matches) {
+        st.textEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
+      }
+    }
   }
 
   function onButton(post) {
     const st = getState(post);
     st.userChose = true;
     if (st.view === "honest") {
-      st.view = "original";
-      render(post);
+      transition(post, "original");
     } else if (st.honest) {
-      st.view = "honest"; // already paid for this one
-      render(post);
+      transition(post, "honest"); // already paid for this one
     } else if (st.view !== "loading") {
       honestifyPost(post);
     }
@@ -231,12 +293,13 @@
     try {
       st.honest = await enqueue(() => requestHonest(text));
       // Respect a "show original" click that happened while we were waiting.
-      if (st.view === "loading") st.view = "honest";
+      if (st.view === "loading") transition(post, "honest");
+      else render(post);
     } catch (e) {
       st.error = e.message || String(e);
       st.view = "error";
+      render(post);
     }
-    render(post);
   }
 
   // --------------------------------------------------------------- auto mode
@@ -293,7 +356,7 @@
       io.unobserve(post);
       st.bar?.remove();
       st.honestEl?.remove();
-      st.textEl?.classList.remove("hl-hidden");
+      st.textEl?.classList.remove("hl-hidden", "hl-translating");
     }
     states.clear();
   }

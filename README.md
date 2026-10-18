@@ -33,6 +33,8 @@ The settings page opens on install. Pick a provider, paste a key, choose a model
 | **Click to honestify** (default) | Adds a small **Honestify** button to every post. When a post is honestified the button changes to **Show original**, which flips back and forth for free. | Only posts you click |
 | **Auto as you scroll** | A post is translated once at least half of it has been on screen for about a second. Posts you scroll past quickly are skipped, and nothing is fetched ahead. | Only posts you stop on |
 
+Like Telegram's translate feature, the post's text dims while the translation loads and a golden shine sweeps across its lines. When the translation arrives, the box resizes smoothly and the words fade in one after another out of a slight blur. **Show original** shrinks it back the same way. If your system is set to reduce motion, there's no animation.
+
 Switch modes, or turn the extension off, from the toolbar popup.
 
 ## Keeping token use low
@@ -100,6 +102,7 @@ src/llm.js               Anthropic Messages + OpenAI-compatible clients, /models
 src/prompt.js            system prompt, user message format, output clean-up
 src/providers.js         provider presets and settings helpers
 src/options.*, popup.*   settings page and toolbar popup
+icons/icon.svg           icon source (icon-small.svg is the simplified 16px version); PNGs are rendered from these
 ```
 
 **When LinkedIn changes its markup** (it will): every selector is at the top of `src/content.js` (`POST_SELECTORS`, `TEXT_SELECTORS`, `EXCLUDE_ANCESTORS`). If none of them match, it falls back to the longest text block in the post that isn't a comment.
@@ -123,4 +126,5 @@ The end-to-end test covers:
 - the Anthropic request format and parameter fallback
 - model listing
 - preset auto-fill on the settings page
+- the loading shimmer and the reveal animation
 - the page staying idle when nothing is happening

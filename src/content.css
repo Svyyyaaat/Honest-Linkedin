@@ -40,6 +40,7 @@
 }
 
 .hl-honest {
+  box-sizing: border-box;
   margin: 0 16px 8px;
   padding: 10px 14px;
   border-left: 3px solid #e0b400;
@@ -76,6 +77,78 @@
 
 .hl-hidden {
   display: none !important;
+}
+
+/* ------------------------------------------------------------- animation */
+
+/* While translating: the original lines dim and a golden shine sweeps
+   across them. --hl-ink is the text colour at reduced opacity (set from JS). */
+.hl-translating {
+  background-image: linear-gradient(
+    105deg,
+    var(--hl-ink, rgba(0, 0, 0, 0.38)) 0%,
+    var(--hl-ink, rgba(0, 0, 0, 0.38)) 38%,
+    #e8b800 47%,
+    #ffd84d 50%,
+    #e8b800 53%,
+    var(--hl-ink, rgba(0, 0, 0, 0.38)) 62%,
+    var(--hl-ink, rgba(0, 0, 0, 0.38)) 100%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  animation: hl-shine 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.hl-translating * {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+@keyframes hl-shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+/* Reveal: words drift in out of a slight blur, one after another. */
+.hl-animate .hl-label {
+  animation: hl-fade 0.4s ease-out both;
+}
+.hl-animate .hl-w {
+  display: inline-block;
+  animation: hl-word 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes hl-word {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(0.35em);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+@keyframes hl-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-translating {
+    animation: none;
+    background-position: 50% 0;
+  }
+  .hl-animate .hl-w,
+  .hl-animate .hl-label {
+    animation: none;
+  }
 }
 
 /* LinkedIn dark theme */

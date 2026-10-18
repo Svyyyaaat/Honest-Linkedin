@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1877d6"/><stop offset="1" stop-color="#0a58a8"/></linearGradient>
+    <linearGradient id="bubble" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e9f0f8"/></linearGradient>
+    <path id="shape" d="M38 26h52a20 20 0 0 1 20 20v26a20 20 0 0 1-20 20H58l-22 16V91.5A20 20 0 0 1 18 72V46a20 20 0 0 1 20-20z"/>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#tile)"/>
+  <use href="#shape" fill="#063d75" opacity=".35" transform="translate(0 4)"/>
+  <use href="#shape" fill="url(#bubble)"/>
+  <g fill="#0b2540">
+    <rect x="35" y="47" width="26" height="7" rx="3.5"/><rect x="67" y="47" width="26" height="7" rx="3.5"/>
+    <circle cx="48" cy="56" r="6.5"/><circle cx="80" cy="56" r="6.5"/>
+    <rect x="46" y="73" width="36" height="7" rx="3.5"/>
+  </g>
+</svg>

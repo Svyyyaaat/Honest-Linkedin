@@ -27,7 +27,7 @@ async function waitFor(fn, what, timeout = 8000) {
 }
 
 (async () => {
-  const { server, log } = createMock();
+  const { server, log, opts: mock } = createMock();
   await new Promise((r) => server.listen(PORT, r));
   const llmCalls = () => log.filter((l) => l.method === "POST").length;
 
@@ -73,8 +73,18 @@ async function waitFor(fn, what, timeout = 8000) {
     assert.equal(llmCalls(), 0, "button mode spends no tokens until clicked");
 
     const post1 = page.locator("[data-urn='urn:li:activity:1']");
+    mock.delay = 800;
     await post1.locator(".hl-btn").click();
+    await sleep(200);
+    assert.equal(await post1.locator(".hl-translating").count(), 1, "shimmer over the original while translating");
     await waitFor(() => post1.locator(".hl-text").count(), "honest text");
+    const running = await post1.evaluate((el) => ({
+      words: el.querySelectorAll(".hl-animate .hl-w").length,
+      animations: el.querySelector(".hl-honest").getAnimations({ subtree: true }).length,
+    }));
+    assert.ok(running.words > 3 && running.animations > 0, `reveal animation runs: ${JSON.stringify(running)}`);
+    assert.equal(await post1.locator(".hl-translating").count(), 0, "shimmer removed after reveal");
+    mock.delay = 0;
     const honest = await post1.locator(".hl-text").textContent();
     assert.match(honest, /^I need attention\. \(I'm thrilled to announce/, `cleaned output, got: ${honest}`);
     assert.equal(await post1.locator(".hl-btn").textContent(), "Show original");
@@ -91,7 +101,9 @@ async function waitFor(fn, what, timeout = 8000) {
     assert.equal(await post1.locator(".hl-btn").textContent(), "Show original");
     assert.equal(llmCalls(), 1, "toggling back reuses the result");
 
-    // An idle page must stay idle: our own DOM writes must not retrigger renders.
+    // An idle page must stay idle (once the reveal animation has finished)
+    // and our own DOM writes must not retrigger renders.
+    await sleep(1800);
     const mutations = await page.evaluate(
       () =>
         new Promise((resolve) => {
@@ -187,10 +199,24 @@ async function waitFor(fn, what, timeout = 8000) {
     if (process.env.SCREENSHOT_DIR) {
       await setSettings(base);
       await page.reload();
-      await page.locator("[data-urn='urn:li:activity:1'] .hl-btn").click();
-      await waitFor(() => page.locator("[data-urn='urn:li:activity:1'] .hl-text").count(), "text");
       await page.setViewportSize({ width: 700, height: 500 });
-      await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, "feed.png") });
+      await ext.evaluate(() => chrome.runtime.sendMessage({ type: "clearCache" }));
+      mock.delay = 1600;
+      const shot = (name) => page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, name) });
+      await page.locator("[data-urn='urn:li:activity:2']").evaluate((el) => el.scrollIntoView());
+      await page.locator("[data-urn='urn:li:activity:2'] .hl-btn").click();
+      await sleep(400);
+      await shot("anim-1-shimmer.png");
+      await sleep(500);
+      await shot("anim-2-shimmer.png");
+      await waitFor(() => page.locator("[data-urn='urn:li:activity:2'] .hl-text").count(), "text");
+      // Freeze the reveal part-way through to capture it.
+      await page.evaluate(() => document.getAnimations().forEach((a) => (a.pause(), (a.currentTime = 300))));
+      await shot("anim-3-reveal.png");
+      await page.evaluate(() => document.getAnimations().forEach((a) => a.play()));
+      await sleep(1200);
+      await shot("anim-4-done.png");
+      mock.delay = 0;
       await opts.reload();
       await sleep(300);
       await opts.setViewportSize({ width: 760, height: 1100 });
