@@ -133,7 +133,7 @@ export function getPreset(id) {
 
 export const DEFAULT_SETTINGS = {
   enabled: true,
-  mode: "button", // "button" = click to honestify, "auto" = honestify as you scroll
+  mode: "auto", // "auto" = honestify as you scroll, "button" = click to honestify
   activeProvider: "anthropic",
   // Per-provider overrides: { [providerId]: { baseUrl, format, apiKey, model, fetchedModels } }
   providers: {},

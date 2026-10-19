@@ -30,8 +30,8 @@ The settings page opens on install. Pick a provider, paste a key, choose a model
 
 | Mode | What it does | Token cost |
 | --- | --- | --- |
-| **Click to honestify** (default) | Adds a small **Honestify** button to every post. When a post is honestified the button changes to **Show original**, which flips back and forth for free. | Only posts you click |
-| **Auto as you scroll** | A post is translated once at least half of it has been on screen for about a second. Posts you scroll past quickly are skipped, and nothing is fetched ahead. | Only posts you stop on |
+| **Auto as you scroll** (default) | A post is translated once at least half of it has been on screen for about a second, and **the next post is translated too**, so it's ready when you get there. Posts you scroll past quickly are skipped. | Posts you stop on, plus one ahead |
+| **Click to honestify** | Adds a small **Honestify** button to every post. When a post is honestified the button changes to **Show original**, which flips back and forth for free. | Only posts you click |
 
 Like Telegram's translate feature, the post's text dims while the translation loads and a golden shine sweeps across its lines. When the translation arrives, the box resizes smoothly and the words fade in one after another out of a slight blur. **Show original** shrinks it back the same way. If your system is set to reduce motion, there's no animation.
 
@@ -41,7 +41,7 @@ Switch modes, or turn the extension off, from the toolbar popup.
 
 - One request per post. The system prompt is about 700 tokens, the post is capped at 3,000 characters, and the answer is under 45 words.
 - **Brainstorm** (off by default): the model writes three drafts and shows the bluntest one. That's about 3× the output tokens.
-- No prefetching. Auto mode needs a post to stay on screen for a moment.
+- Almost no prefetching. Auto mode translates a post once it stays on screen for a moment, plus only the one post right below it.
 - Results are cached by post text, model and prompt version (last 400). Re-showing a post or reloading the page costs nothing.
 - At most 2 requests run at once. Identical posts share one request.
 - Reasoning models are asked for low effort: `effort: low` on Claude, `reasoning_effort: low` on OpenAI's GPT-5/o-series. A server that rejects one of these settings gets the request again without it.

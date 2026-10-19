@@ -111,7 +111,7 @@ async function save() {
   settings = {
     ...settings,
     enabled: $("enabled").checked,
-    mode: document.querySelector("input[name=mode]:checked")?.value || "button",
+    mode: document.querySelector("input[name=mode]:checked")?.value || "auto",
     activeProvider: form.id,
     extraInstructions: $("extraInstructions").value.trim(),
     brainstorm: $("brainstorm").checked,

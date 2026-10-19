@@ -45,7 +45,7 @@
   const AUTO_DWELL_MS = 900; // post must stay on screen this long before auto mode spends tokens
   const MAX_CONCURRENT = 2;
 
-  let settings = { enabled: true, mode: "button" };
+  let settings = { enabled: true, mode: "auto" };
   const states = new Map(); // post element -> state
 
   // ---------------------------------------------------------------- DOM utils
@@ -464,18 +464,20 @@
   // Only posts that actually sit on screen for a moment get translated;
   // nothing is fetched ahead of the scroll position.
 
+  const wantsAuto = (st) => st.textEl && !st.userChose && !st.honest && st.view === "original";
+
   const io = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         const post = entry.target;
         const st = getState(post);
         if (entry.isIntersecting) {
-          if (st.timer || st.honest || st.userChose || st.view !== "original") continue;
+          if (st.timer) continue;
           st.timer = setTimeout(() => {
             st.timer = null;
-            if (settings.enabled && settings.mode === "auto" && !st.userChose && !st.honest) {
-              honestifyPost(post);
-            }
+            if (!settings.enabled || settings.mode !== "auto") return;
+            if (wantsAuto(st)) honestifyPost(post);
+            preloadNext(post);
           }, AUTO_DWELL_MS);
         } else if (st.timer) {
           clearTimeout(st.timer);
@@ -485,6 +487,16 @@
     },
     { threshold: 0.5 },
   );
+
+  // While you read a post, translate the one below it so it's ready when you
+  // get there. Only one ahead: reading that one preloads the next, and so on.
+  function preloadNext(post) {
+    const posts = [...states.keys()]
+      .filter((p) => p.isConnected && states.get(p).textEl)
+      .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    const next = posts[posts.indexOf(post) + 1];
+    if (next && wantsAuto(getState(next))) honestifyPost(next);
+  }
 
   // ------------------------------------------------------------------- scan
 
@@ -535,7 +547,7 @@
 
   function applySettings(next) {
     const wasEnabled = settings.enabled;
-    settings = { enabled: true, mode: "button", ...(next || {}) };
+    settings = { enabled: true, mode: "auto", ...(next || {}) };
     if (!settings.enabled) {
       teardown();
       return;

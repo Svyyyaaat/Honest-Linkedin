@@ -68,6 +68,9 @@ async function waitFor(fn, what, timeout = 8000) {
       providers: { custom: { baseUrl: `http://localhost:${PORT}/v1`, format: "openai", model: "mock-small" } },
     };
     await setSettings(base);
+    // Fresh install defaults to auto mode.
+    const fresh = await ext.evaluate(async () => (await import("./providers.js")).DEFAULT_SETTINGS.mode);
+    assert.equal(fresh, "auto", "auto mode is the default");
     // The install hook opens the options page; close it.
     for (const p of context.pages()) if (p.url().includes("options.html")) await p.close();
 
@@ -223,8 +226,9 @@ async function waitFor(fn, what, timeout = 8000) {
     await page.locator("[data-urn='urn:li:activity:2']").scrollIntoViewIfNeeded();
     await waitFor(() => page.locator("[data-urn='urn:li:activity:2'] .hl-text").count(), "auto translation");
     await sleep(1500);
-    assert.equal(llmCalls(), beforeAuto + 1, "auto mode translates only the post on screen");
-    assert.equal(await page.locator("[data-urn='urn:li:activity:4'] .hl-text").count(), 0, "far-away post untouched");
+    assert.equal(llmCalls(), beforeAuto + 2, "auto mode translates the post on screen and preloads the next one");
+    assert.equal(await page.locator("[data-urn='urn:li:activity:3'] .hl-text").count(), 1, "next post preloaded");
+    assert.equal(await page.locator("[data-urn='urn:li:activity:4'] .hl-text").count(), 0, "only one post ahead");
 
     // Fast scrolling past posts should not translate them.
     const before = llmCalls();
